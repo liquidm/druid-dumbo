@@ -23,8 +23,8 @@ Once you got that, try:
 
 ```
 ./dumbo.rb
-CLASSPATH= hadoop_config_path:druid_indexer_selfcontained_jar_path com.metamx.druid.indexer.HadoopDruidIndexerMain
-java -cp $CLASSPATH ./druidimport.conf
+CLASSPATH= hadoop_config_path:druid_indexer_selfcontained_jar_path
+java -cp $CLASSPATH com.metamx.druid.indexer.HadoopDruidIndexerMain ./druidimport.conf 
 ```
 
 Caveats:
