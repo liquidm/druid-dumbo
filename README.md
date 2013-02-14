@@ -23,8 +23,10 @@ Start by creating a `importer.template` based on `importer.template.example`.
 Once you got that, try:
 
 ```
+DRUIDBASE=fully_qualified_path_to_druid # PLEASE ADJUST
+CLASSPATH=`hadoop classpath`:`find $DRUIDBASE/indexer/target/ -name druid-indexer-*-selfcontained.jar`
+
 ./dumbo.rb
-CLASSPATH=`hadoop classpath`:fullly_qualified_filename_of_druid_indexer_selfcontained_jar
 java -cp $CLASSPATH com.metamx.druid.indexer.HadoopDruidIndexerMain ./druidimport.conf 
 ```
 
