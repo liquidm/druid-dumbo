@@ -4,9 +4,7 @@ druid-dumbo, the druid batch config generator
 When you start to use [batch ingestion](https://github.com/metamx/druid/wiki/Batch-ingestion),
 you'll quickly notice, you will need to edit the batch config for each run.
 
-Also, it's unreliable and needs lots of fiddling.
-
-dumbo.rb actually checks your hdfs against your s3 and computes what's needed.
+druid-dumbo actually checks your HDFS against your S3 and computes what's missing/outdated.
 
 The easiest way to use dumbo is via environment variables:
 
@@ -18,7 +16,7 @@ The easiest way to use dumbo is via environment variables:
  * AMAZON_ACCESS_KEY_ID - your s3 key
  * AMAZON_SECRET_ACCESS_KEY - your s3 secret
 
-Start by creating a `importer.template` based on `importer.template.example`.
+Start by creating an `importer.template` based on `importer.template.example`.
 
 Once you got that, try:
 
@@ -30,8 +28,17 @@ CLASSPATH=`hadoop classpath`:`find $DRUIDBASE/indexer/target/ -name druid-indexe
 java -cp $CLASSPATH com.metamx.druid.indexer.HadoopDruidIndexerMain ./druidimport.conf 
 ```
 
-Caveats:
+Caveats
+-------
 
 Extremly young code, use at your own risk. Also, currently restricted to hourly granularity and JSON in HDFS.
 
-Patches welcome!
+You can support us on different ways
+------------------------------------
+
+* Use druid-dumbo, and let us know if you encounter anything that's broken or missing.
+  A failing spec is great. A pull request with your fix is even better!
+* Spread the word about druid-dumbo on Twitter, Facebook, and elsewhere.
+* Work with us at madvertise on awesome stuff like this.
+  [Read the job description](http://madvertise.com/en/2013/02/07/software-developer-ruby-fm) and send a mail to careers@madvertise.com.
+
