@@ -34,6 +34,9 @@ end
 data_source = ENV['DRUID_DATASOURCE']
 s3_bucket = ENV['DRUID_S3_BUCKET']
 s3_prefix = ENV['DRUID_S3_PREFIX']
+s3_prefix = s3_prefix[1..-1] if s3_prefix[0] == '/' # Postel's law
+
+segment_output_path = "s3n://#{s3_bucket}/#{s3_prefix}"
 
 s3 = Druid::S3Scanner.new :data_source => data_source, :bucket => s3_bucket, :prefix => s3_prefix
 

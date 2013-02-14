@@ -11,5 +11,7 @@
     "type": "static",
     "paths": <%= files.join(',').to_json %>,
     "filePattern": "*"
-  }
+  },
+
+  "segmentOutputPath": <%= segment_output_path.to_json %>
 }
