@@ -33,12 +33,11 @@ Caveats
 
 Extremly young code, use at your own risk. Also, currently restricted to hourly granularity and JSON in HDFS.
 
-You can support us on different ways
-------------------------------------
+Support us
+----------
 
 * Use druid-dumbo, and let us know if you encounter anything that's broken or missing.
   A failing spec is great. A pull request with your fix is even better!
 * Spread the word about druid-dumbo on Twitter, Facebook, and elsewhere.
 * Work with us at madvertise on awesome stuff like this.
   [Read the job description](http://madvertise.com/en/2013/02/07/software-developer-ruby-fm) and send a mail to careers@madvertise.com.
-
