@@ -32,6 +32,6 @@ java -cp $CLASSPATH com.metamx.druid.indexer.HadoopDruidIndexerMain ./druidimpor
 
 Caveats:
 
-Extremly young code, use at your own risk. Also, currently restricted to hourly granularity
+Extremly young code, use at your own risk. Also, currently restricted to hourly granularity and JSON in HDFS.
 
 Patches welcome!
