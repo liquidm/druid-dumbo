@@ -26,7 +26,7 @@ puts "We got raw data from #{Time.at raw_start} to #{Time.at raw_end}"
 segments = {}
 
 ii = raw_start
-while ii <= raw_end
+while ii < raw_end
   segments[ii] = nil
   ii += 3600
 end
