@@ -13,6 +13,7 @@ The easiest way to use dumbo is via environment variables:
  * DRUID_DATASOURCE - set it to your druid datasource 
  * DRUID_S3_BUCKET - the s3 bucket to look into
  * DRUID_S3_PREFIX - the s3 prefix to observe
+ * DRUID_HDFS_FILEPATTERN - optional, defaults to '/events/*/*/*/*/part*'
  * DRUID_S3_HOST - optional, set to 's3-eu-west-1.amazonaws.com' if you use an EU bucket (strongly recommended for EU people)
  * AMAZON_ACCESS_KEY_ID - your s3 keys
  * AMAZON_SECRET_ACCESS_KEY - your s3 secrets
@@ -23,7 +24,7 @@ Once you got that, try:
 
 ```
 ./dumbo.rb
-CLASSPATH= hadoop_config_path:druid_indexer_selfcontained_jar_path
+CLASSPATH=hadoop_config_path:druid_indexer_selfcontained_jar_path
 java -cp $CLASSPATH com.metamx.druid.indexer.HadoopDruidIndexerMain ./druidimport.conf 
 ```
 
