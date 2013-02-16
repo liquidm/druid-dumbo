@@ -18,8 +18,8 @@ hdfs = Druid::HdfsScanner.new :file_pattern => (ENV['DRUID_HDFS_FILEPATTERN'] ||
 hdfs.scan
 
 raw_start, raw_end = hdfs.range
-raw_start = (raw_start / 3600).ceil * 3600 # start at the hour boundary
-raw_end = [raw_end, (Time.now.to_i / 3600).floor * 3600].min # cut off at the last full hour
+raw_start = (raw_start / 3600.0).ceil * 3600 # cut off at the first full hour
+raw_end = (raw_end / 3600.0).floor * 3600 # cut off at the last full hour
 
 puts "We got raw data from #{Time.at raw_start} to #{Time.at raw_end}"
 
