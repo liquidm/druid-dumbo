@@ -10,6 +10,7 @@ module Druid
     def initialize(opts = {})
       @file_pattern = opts[:file_pattern] || raise('Must pass :file_pattern param')
       @files = opts[:cache] || {}
+      @enable_rescan = opts[:enable_rescan] || (ENV['DRUID_RESCAN'].to_i > 0)
       @lock = Mutex.new
     end
 
@@ -17,12 +18,20 @@ module Druid
       result = []
       @files.each do |name, hdfs_info|
         if info.nil?
-          result.push(name) if (hdfs_info['start'] .. hdfs_info['end']).cover? start
-          next
+          if (hdfs_info['start'] .. hdfs_info['end']).cover? start
+            puts "No S3 segment for #{Time.at(start).utc}, adding to job"
+            result.push(name)
+          end
         elsif hdfs_info['start'] >= info['end'] or hdfs_info['end'] <= info['start']
           next
+        elsif hdfs_info['created'] >= info['created']
+          if @enable_rescan
+            puts "HDFS is newer than S3 need to recheck #{Time.at(start).utc}"
+            result.push(name)
+          else
+            puts "HDFS is newer than S3 for #{Time.at(start).utc}, but rescan not enabled"
+          end
         end
-        result.push(name) if hdfs_info['created'] >= info['created']
       end
       result
     end
