@@ -72,4 +72,9 @@ puts 'Writing druidimport.conf for batch ingestion'
 IO.write(state_file_name, hdfs.to_json)
 IO.write(File.join(base_dir, 'druidimport.conf'), template.result(binding))
 
-puts puts 'And we are out. Hadoop, start your engines!'
+if rescan_files.empty?
+  puts 'Nothing to scan, will exit 1 now.'
+  exit 1
+else
+  puts 'And we are out. Hadoop, start your engines!'
+end
