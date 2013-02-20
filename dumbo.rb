@@ -21,6 +21,8 @@ raw_start, raw_end = hdfs.range
 raw_start = (raw_start / 3600.0).ceil * 3600 # cut off at the first full hour
 raw_end = (raw_end / 3600.0).floor * 3600 # cut off at the last full hour
 
+# save hdfs state early...
+IO.write(state_file_name, hdfs.to_json)
 puts "We got raw data from #{Time.at raw_start} to #{Time.at raw_end}"
 
 segments = {}
@@ -69,7 +71,6 @@ files = rescan_files.to_a
 
 puts 'Writing druidimport.conf for batch ingestion'
 
-IO.write(state_file_name, hdfs.to_json)
 IO.write(File.join(base_dir, 'druidimport.conf'), template.result(binding))
 
 if rescan_files.empty?
