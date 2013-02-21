@@ -106,12 +106,12 @@ module Druid
 
     def first_timestamp_in(name)
       ts = extract_timestamp(`hadoop fs -cat #{name} 2>/dev/null | head -1`)
-      (ts / 3600.0).ceil * 3600 # round to full hour
+      (ts / 3600.0).floor * 3600 # round to full hour
     end
 
     def last_timestamp_in(name)
       ts = extract_timestamp(`hadoop fs -tail #{name} 2>/dev/null | tail -1`)
-      (ts / 3600.0).floor * 3600 # round to full hour
+      (ts / 3600.0).ceil * 3600 # round to full hour
     end
 
     def extract_timestamp(string)
