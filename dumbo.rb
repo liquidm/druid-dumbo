@@ -57,8 +57,12 @@ rescan_files = Set.new
 segments.each do |start, info|
   hdfs_files = hdfs.files_for start, info
   if (hdfs_files.length > 0)
-    rescan_hours.add start
-    rescan_files.merge hdfs_files
+    if (rescan_hours.length < 24)
+      rescan_hours.add start
+      rescan_files.merge hdfs_files
+    else
+      puts "Job queue already worth 24h, not scheduling #{start} in this run"
+    end
   elsif info.nil?
     puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
   end

@@ -19,17 +19,17 @@ module Druid
       @files.each do |name, hdfs_info|
         if info.nil?
           if (hdfs_info['start'] .. hdfs_info['end']).cover? start
-            puts "No S3 segment for #{Time.at(start).utc}, adding to job"
+            puts "No S3 segment for #{Time.at(start).utc}, need to work on #{name}"
             result.push(name)
           end
         elsif hdfs_info['start'] >= info['end'] or hdfs_info['end'] <= info['start']
           next
         elsif hdfs_info['created'] >= info['created']
           if @enable_rescan
-            puts "HDFS is newer than S3 need to recheck #{Time.at(start).utc}"
+            puts "HDFS is newer than S3 need to recheck #{Time.at(start).utc} using #{name}"
             result.push(name)
           else
-            puts "HDFS is newer than S3 for #{Time.at(start).utc}, but rescan not enabled"
+            puts "HDFS is newer than S3 for #{Time.at(start).utc}, but rescan not enabled, skipping #{name}"
           end
         end
       end
