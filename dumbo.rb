@@ -54,7 +54,8 @@ end
 rescan_hours = Set.new
 rescan_files = Set.new
 
-segments.each do |start, info|
+segments.keys.reverse.each do |start|
+  info = segments[start]
   hdfs_files = hdfs.files_for start, info
   if (hdfs_files.length > 0)
     if (rescan_hours.length < 24)
