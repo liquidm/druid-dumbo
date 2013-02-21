@@ -120,12 +120,20 @@ module Druid
 
     def range
       start = Float::INFINITY
-      stop = -Float::INFINITY
+      stop = 0
 
       @files.each do |name, info|
         start = [start, info['start']].min
         stop = [stop, info['end']].max
       end
+
+      puts "First hour in HDFS is #{Time.at(start)}"
+      start += 3600
+      puts "Reporting start as #{Time.at(start)} to ensure full hour"
+
+      puts "Last hour in HDFS is #{Time.at(stop)}"
+      stop -= 3600
+      puts "Reporting end as #{Time.at(stop)} to ensure full hour"
 
       return start, stop
     end

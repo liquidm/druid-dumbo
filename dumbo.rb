@@ -18,8 +18,6 @@ hdfs = Druid::HdfsScanner.new :file_pattern => (ENV['DRUID_HDFS_FILEPATTERN'] ||
 hdfs.scan
 
 raw_start, raw_end = hdfs.range
-raw_start = (raw_start / 3600.0).ceil * 3600 # cut off at the first full hour
-raw_end = (raw_end / 3600.0).floor * 3600 # cut off at the last full hour
 
 # save hdfs state early...
 IO.write(state_file_name, hdfs.to_json)
