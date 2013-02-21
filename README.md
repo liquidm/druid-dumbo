@@ -12,6 +12,7 @@ The easiest way to use dumbo is via environment variables:
  * DRUID_S3_BUCKET - the s3 bucket to look into
  * DRUID_S3_PREFIX - the s3 prefix to observe
  * DRUID_HDFS_FILEPATTERN - optional, defaults to '/events/*/*/*/*/part*'
+ * DRUID_MAX_HOURS_PER_JOB - optional, limit the number of hours to be scheduled per run
  * DRUID_RESCAN - optional, set to 1 to rescan existing S3 segments where the HDFS input is newer
  * DRUID_S3_HOST - optional, set to 's3-eu-west-1.amazonaws.com' if you use an EU bucket (strongly recommended for EU people)
  * AMAZON_ACCESS_KEY_ID - your s3 key

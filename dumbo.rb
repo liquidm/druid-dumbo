@@ -54,15 +54,17 @@ end
 rescan_hours = Set.new
 rescan_files = Set.new
 
+max_hours = ENV['DRUID_MAX_HOURS_PER_JOB'].to_i
+
 segments.keys.reverse.each do |start|
   info = segments[start]
   hdfs_files = hdfs.files_for start, info
   if (hdfs_files.length > 0)
-    if (rescan_hours.length < 24)
+    if (max_hours == 0 or rescan_hours.length < max_hours)
       rescan_hours.add start
       rescan_files.merge hdfs_files
     else
-      puts "Job queue already worth 24h, not scheduling #{start} in this run"
+      puts "Job queue already worth #{max_hours}h, not scheduling #{start} in this run"
     end
   elsif info.nil?
     puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
