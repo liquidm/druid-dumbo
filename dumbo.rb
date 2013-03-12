@@ -4,7 +4,7 @@ require 'set'
 require 'json'
 require 'erb'
 require './lib/hdfs_scanner.rb'
-require './lib/s3_scanner.rb'
+require './lib/mysql_scanner.rb'
 
 base_dir = File.dirname(__FILE__)
 
@@ -38,14 +38,14 @@ s3_prefix = s3_prefix[1..-1] if s3_prefix[0] == '/' # Postel's law
 
 segment_output_path = "s3n://#{s3_bucket}/#{s3_prefix}"
 
-s3 = Druid::S3Scanner.new :data_source => data_source, :bucket => s3_bucket, :prefix => s3_prefix
+mysql = Druid::MysqlScanner.new :data_source => data_source, :host => 'db', :password => 'Y81MXaTJhN'
 
-s3.scan.each do |s3_segment|
-  start = s3_segment['start']
+mysql.scan.each do |mysql_segment|
+  start = mysql_segment['start']
   if segments.include? start
-    segments[start] = s3_segment
+    segments[start] = mysql_segment
   else
-    puts "Ignoring s3 segment for #{Time.at(start).utc} as it's not in the raw data range"
+    puts "Ignoring mysql_segment segment for #{Time.at(start).utc} as it's not in the raw data range"
   end
 end
 

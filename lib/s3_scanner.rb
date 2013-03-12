@@ -21,9 +21,6 @@ module Druid
       @bucket = AWS::S3::Bucket.find(@bucket)
     end
 
-    def fetch(timestamp)
-    end
-
     def scan
       ranges = []
       marker = ''
@@ -55,13 +52,4 @@ module Druid
     end
 
   end
-end
-
-if __FILE__ == $0
-  scanner = Druid::S3Scanner.new({
-    :bucket => 'madvertise-druid',
-    :prefix => '/hadoop',
-    :data_source => 'madvertise'
-  })
-  puts scanner.scan.inspect
 end
