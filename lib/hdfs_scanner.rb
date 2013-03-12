@@ -78,7 +78,7 @@ module Druid
         pool.process do
           begin
             first = first_timestamp_in(name)
-            last = last_timestamp_in(name)
+            last = last_timestamp_in(name) rescue crawl_last_timestamp_in(name)
 
             # WARNING: don't use symbols as keys, going through to_json
             @lock.synchronize do
@@ -114,6 +114,12 @@ module Druid
       (ts / 3600.0).ceil * 3600 # round to full hour
     end
 
+    def crawl_last_timestamp_in(name)
+      puts "Last row in #{name} seems to be bigger than 1k, working around hadoop..."
+      ts = extract_timestamp(`hadoop fs -cat #{name} 2>/dev/null | tail -1`)
+      (ts / 3600.0).ceil * 3600 # round to full hour
+    end
+
     def extract_timestamp(string)
       JSON.parse(string)['timestamp']
     end
@@ -123,6 +129,7 @@ module Druid
       stop = 0
 
       @files.each do |name, info|
+        next if info['skip']
         start = [start, info['start']].min
         stop = [stop, info['end']].max
       end
