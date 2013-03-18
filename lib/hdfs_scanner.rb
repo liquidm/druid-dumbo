@@ -3,6 +3,7 @@ require 'time'
 require 'thread'
 require 'thread/pool'
 require 'set'
+require 'tempfile'
 
 module Druid
   class HdfsScanner
@@ -77,8 +78,9 @@ module Druid
       if existing_info.nil? || (existing_info['size'].to_i != size)
         pool.process do
           begin
-            first = first_timestamp_in(name)
-            last = last_timestamp_in(name) rescue crawl_last_timestamp_in(name)
+            first,last = pig_timestamps_in name
+
+            puts "Scanned #{name}, found data between #{Time.at first} and #{Time.at last}"
 
             # WARNING: don't use symbols as keys, going through to_json
             @lock.synchronize do
@@ -104,24 +106,19 @@ module Druid
       end
     end
 
-    def first_timestamp_in(name)
-      ts = extract_timestamp(`hadoop fs -cat #{name} 2>/dev/null | head -1`)
-      (ts / 3600.0).floor * 3600 # round to full hour
-    end
+    def pig_timestamps_in(name)
+      pig_script = Dir.glob(File.join(File.dirname(__FILE__), '..', 'contrib', '*')).map{|jar| "register '#{File.expand_path(jar)}';"}.join("\n") + %Q[
+        data = load '#{name}' using com.twitter.elephantbird.pig.load.JsonLoader() as (json: map[]);
+        cleaned =  foreach data generate (double) json#'timestamp' as timestamp;
+        grouped = GROUP cleaned ALL;
+        result = FOREACH grouped GENERATE (long) MIN(cleaned.timestamp) as start, (long) MAX(cleaned.timestamp) as stop;
+        dump result;
+      ]
+      script = Tempfile.new('dumbo')
+      script.write pig_script
+      script.close
 
-    def last_timestamp_in(name)
-      ts = extract_timestamp(`hadoop fs -tail #{name} 2>/dev/null | tail -1`)
-      (ts / 3600.0).ceil * 3600 # round to full hour
-    end
-
-    def crawl_last_timestamp_in(name)
-      puts "Last row in #{name} seems to be bigger than 1k, working around hadoop..."
-      ts = extract_timestamp(`hadoop fs -cat #{name} 2>/dev/null | tail -1`)
-      (ts / 3600.0).ceil * 3600 # round to full hour
-    end
-
-    def extract_timestamp(string)
-      JSON.parse(string)['timestamp']
+      `pig #{script.path} 2>/dev/null`.match(/\((\d+),(\d+)\)/)[1..-1].map{|ts| ts.to_i}
     end
 
     def range

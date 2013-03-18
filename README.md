@@ -32,10 +32,17 @@ CLASSPATH=`hadoop classpath`:`find $DRUIDBASE/indexer/target/ -name druid-indexe
 java -cp $CLASSPATH com.metamx.druid.indexer.HadoopDruidIndexerMain ./druidimport.conf 
 ```
 
+Dependencies
+------------
+
+You need a working `hadoop` and a working `pig` in your path.
+
+
 Caveats
 -------
 
 Extremly young code, use at your own risk. Also, currently restricted to hourly granularity and JSON in HDFS.
+
 
 Support us
 ----------
