@@ -132,11 +132,11 @@ module Druid
       end
 
       puts "First hour in HDFS is #{Time.at(start)}"
-      start += 3600
+      start = (start / 3600.0).ceil * 3600
       puts "Reporting start as #{Time.at(start)} to ensure full hour"
 
       puts "Last hour in HDFS is #{Time.at(stop)}"
-      stop -= 3600
+      stop = (stop / 3600.0).floor * 3600
       puts "Reporting end as #{Time.at(stop)} to ensure full hour"
 
       return start, stop
