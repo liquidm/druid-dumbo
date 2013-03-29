@@ -19,11 +19,26 @@ module Druid
       result = []
 
       if @enable_rescan and not info.nil?
+        segment_range = (info['start'] .. info['end'])
         must_rescan = @files.any? do |name, hdfs_info|
-          hdfs_info['created'] >= info['created']
+          hdfs_range = (hdfs_info['start'] .. hdfs_info['end'])
+
+          if hdfs_range.include?(segment_range.begin) || segment_range.include?(hdfs_range.begin)
+            invalid = (hdfs_info['created'] >= info['created'])
+            puts "HDFS #{name} (created #{hdfs_info['created']}) invalidates druid segment #{info.inspect}" if invalid
+            invalid
+          else
+            false
+          end
         end
 
-        return result unless must_rescan
+        unless must_rescan
+          puts "#{Time.at start} current, skipping"
+          return result
+        end
+      elsif not @enable_rescan and not info.nil?
+        puts "#{Time.at start} exists, skipping"
+        return result
       end
 
       @files.each do |name, hdfs_info|
@@ -31,10 +46,11 @@ module Druid
 
         segment_range = (start .. start + 3600)
         if hdfs_range.include?(segment_range.begin) || segment_range.include?(hdfs_range.begin)
-          puts "Need to scan #{Time.at(start).utc} using #{name}"
           result.push(name)
         end
       end
+
+      puts "No druid segment for #{Time.at(start).utc}, will create using \n#{result.join("\n")}\n" unless result.empty?
 
       result
     end
@@ -80,9 +96,11 @@ module Druid
       if existing_info.nil? || (existing_info['size'].to_i != size)
         pool.process do
           begin
-            first,last = pig_timestamps_in name
+            @lock.synchronize do
+              puts "Scanning #{name}"
+            end
 
-            puts "Scanned #{name}, found data between #{Time.at first} and #{Time.at last}"
+            first,last = pig_timestamps_in name
 
             # WARNING: don't use symbols as keys, going through to_json
             @lock.synchronize do
@@ -92,8 +110,8 @@ module Druid
                 'end' => last,
                 'created' => cdate
               }
+              puts "Found #{name}, #{@files[name]}"
             end
-            puts "Found #{name}, #{@files[name]}"
           rescue => e
             @lock.synchronize do
               @files[name] = {

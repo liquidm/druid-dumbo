@@ -40,13 +40,10 @@ segment_output_path = "s3n://#{s3_bucket}/#{s3_prefix}"
 
 mysql = Druid::MysqlScanner.new :data_source => data_source, :host => 'db', :password => 'Y81MXaTJhN'
 
+
 mysql.scan.each do |mysql_segment|
   start = mysql_segment['start']
-  if segments.include? start
-    segments[start] = mysql_segment
-  else
-    puts "Ignoring mysql_segment segment for #{Time.at(start).utc} as it's not in the raw data range"
-  end
+  segments[start] = mysql_segment if segments.include? start
 end
 
 rescan_hours = Set.new
