@@ -81,12 +81,13 @@ module Druid
       broken_files = []
       @files.each do |name, info|
         if info['skip'] == true
-          puts "#{name} is unparsable, removing from HDFS"
+          puts "WARNING: #{name} is (marked) unparsable"
           broken_files.push name
           @files.delete name
         end
       end
-      puts `hadoop fs -rm #{broken_files.join(' ')} 2> /dev/null` unless broken_files.length == 0
+      #uncomment this line to purge HDFS, otherwise the files will be rescanned next time
+      #puts `hadoop fs -rm #{broken_files.join(' ')} 2> /dev/null` unless broken_files.length == 0
 
       pool.shutdown
     end
