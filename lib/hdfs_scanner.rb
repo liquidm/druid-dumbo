@@ -21,14 +21,18 @@ module Druid
       if @enable_rescan and not info.nil?
         segment_range = (info['start'] .. info['end'])
         must_rescan = @files.any? do |name, hdfs_info|
-          hdfs_range = (hdfs_info['start'] .. hdfs_info['end'])
-
-          if hdfs_range.include?(segment_range.begin) || segment_range.include?(hdfs_range.begin)
-            invalid = (hdfs_info['created'] >= info['created'])
-            puts "HDFS #{name} (created #{hdfs_info['created']}) invalidates druid segment #{info.inspect}" if invalid
-            invalid
-          else
+          if hdfs_info['skip']
             false
+          else
+            hdfs_range = (hdfs_info['start'] .. hdfs_info['end'])
+
+            if hdfs_range.include?(segment_range.begin) || segment_range.include?(hdfs_range.begin)
+              invalid = (hdfs_info['created'] >= info['created'])
+              puts "HDFS #{name} (created #{hdfs_info['created']}) invalidates druid segment #{info.inspect}" if invalid
+              invalid
+            else
+              false
+            end
           end
         end
 
@@ -42,6 +46,8 @@ module Druid
       end
 
       @files.each do |name, hdfs_info|
+        next if hdfs_info['skip']
+
         hdfs_range = (hdfs_info['start'] .. hdfs_info['end'])
 
         segment_range = (start .. start + 3600)

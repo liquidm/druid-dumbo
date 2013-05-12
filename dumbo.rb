@@ -14,6 +14,13 @@ template_file = File.join(base_dir, 'importer.template')
 hadoop_state = JSON.parse(IO.read(state_file_name)) rescue {}
 template = ERB.new(IO.read(template_file))
 
+hadoop_state.each do  |key,value|
+  if value.nil? or value['skip']
+    puts "#{value.inspect} doesn't look right, rescanning #{key}"
+    hadoop_state.delete key
+  end
+end
+
 hdfs = Druid::HdfsScanner.new :file_pattern => (ENV['DRUID_HDFS_FILEPATTERN'] || '/events/*/*/*/*/part*'), :cache => hadoop_state
 hdfs.scan
 
