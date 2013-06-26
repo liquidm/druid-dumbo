@@ -45,7 +45,7 @@ s3_prefix = s3_prefix[1..-1] if s3_prefix[0] == '/' # Postel's law
 
 segment_output_path = "s3n://#{s3_bucket}/#{s3_prefix}"
 
-mysql = Druid::MysqlScanner.new :data_source => data_source, :host => 'db', :password => 'Y81MXaTJhN'
+mysql = Druid::MysqlScanner.new :data_source => data_source
 
 
 mysql.scan.each do |mysql_segment|
