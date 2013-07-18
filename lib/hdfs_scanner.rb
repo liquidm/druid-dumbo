@@ -37,11 +37,9 @@ module Druid
         end
 
         unless must_rescan
-          puts "#{Time.at start} current, skipping"
           return result
         end
       elsif not @enable_rescan and not info.nil?
-        puts "#{Time.at start} exists, skipping"
         return result
       end
 

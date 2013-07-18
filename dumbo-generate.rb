@@ -1,5 +1,4 @@
 #!/usr/bin/env ruby
-
 require 'set'
 require 'json'
 require 'erb'
@@ -16,18 +15,15 @@ template = ERB.new(IO.read(template_file))
 
 hadoop_state.each do  |key,value|
   if value.nil? or value['skip']
-    puts "#{value.inspect} doesn't look right, rescanning #{key}"
-    hadoop_state.delete key
+    puts "Ignoring #{key}"
+    hadoop_state.delete(key)
   end
 end
 
 hdfs = Druid::HdfsScanner.new :file_pattern => (ENV['DRUID_HDFS_FILEPATTERN'] || '/events/*/*/*/*/part*'), :cache => hadoop_state
-hdfs.scan
 
 raw_start, raw_end = hdfs.range
 
-# save hdfs state early...
-IO.write(state_file_name, hdfs.to_json)
 puts "We got raw data from #{Time.at raw_start} to #{Time.at raw_end}"
 
 segments = {}
@@ -46,7 +42,6 @@ s3_prefix = s3_prefix[1..-1] if s3_prefix[0] == '/' # Postel's law
 segment_output_path = "s3n://#{s3_bucket}/#{s3_prefix}"
 
 mysql = Druid::MysqlScanner.new :data_source => data_source
-
 
 mysql.scan.each do |mysql_segment|
   start = mysql_segment['start']

@@ -28,7 +28,8 @@ Once you got that, try:
 DRUIDBASE=fully_qualified_path_to_druid # PLEASE ADJUST
 CLASSPATH=`hadoop classpath`:`find $DRUIDBASE/indexer/target/ -name druid-indexer-*-selfcontained.jar`
 
-./dumbo.rb
+./dumbo-scan.rb # scan all HDFS and computes min/max using pig
+./dumbo-generate.rb # writes a druidimport.conf based on the scan above
 java -cp $CLASSPATH com.metamx.druid.indexer.HadoopDruidIndexerMain ./druidimport.conf 
 ```
 
