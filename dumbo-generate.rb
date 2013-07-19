@@ -21,6 +21,7 @@ hadoop_state.each do  |key,value|
 end
 
 hdfs = Druid::HdfsScanner.new :file_pattern => (ENV['DRUID_HDFS_FILEPATTERN'] || '/events/*/*/*/*/part*'), :cache => hadoop_state
+hdfs.scan
 
 raw_start, raw_end = hdfs.range
 
