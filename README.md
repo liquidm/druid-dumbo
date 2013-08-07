@@ -8,14 +8,13 @@ druid-dumbo actually checks your HDFS against your mysql and computes what's mis
 
 The easiest way to use dumbo is via environment variables:
 
- * DRUID_DATASOURCE - set it to your druid datasource 
+ * DRUID_DATASOURCE - set it to your druid datasource
  * DRUID_MYSQL_HOST - defaults to 'localhost'
  * DRUID_MYSQL_USER - defaults to 'druid'
  * DRUID_MYSQL_PASSWORD - you should really have one ;)
  * DRUID_MYSQL_DB' - defaults to 'druid'
  * DRUID_MYSQL_TABLE - defaults to 'segments'
- * DRUID_S3_BUCKET - the s3 bucket to generate to
- * DRUID_S3_PREFIX - the s3 prefix to generate to
+ * DRUID_OUTPUT_PATH - where to generate segments too
  * DRUID_HDFS_FILEPATTERN - optional, defaults to '/events/*/*/*/*/part*'
  * DRUID_MAX_HOURS_PER_JOB - optional, limit the number of hours to be scheduled per run
  * DRUID_RESCAN - optional, set to 1 to rescan existing S3 segments where the HDFS input is newer
@@ -30,7 +29,7 @@ CLASSPATH=`hadoop classpath`:`find $DRUIDBASE/indexer/target/ -name druid-indexe
 
 ./dumbo-scan.rb # scan all HDFS and computes min/max using pig
 ./dumbo-generate.rb # writes a druidimport.conf based on the scan above
-java -cp $CLASSPATH com.metamx.druid.indexer.HadoopDruidIndexerMain ./druidimport.conf 
+java -cp $CLASSPATH com.metamx.druid.indexer.HadoopDruidIndexerMain ./druidimport.conf
 ```
 
 Dependencies
