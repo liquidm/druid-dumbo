@@ -25,6 +25,8 @@ hdfs.scan
 
 raw_start, raw_end = hdfs.range
 
+# save hdfs state early...
+IO.write(state_file_name, hdfs.to_json)
 puts "We got raw data from #{Time.at raw_start} to #{Time.at raw_end}"
 
 segments = {}
