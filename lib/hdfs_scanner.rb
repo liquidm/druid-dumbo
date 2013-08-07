@@ -60,7 +60,7 @@ module Druid
     end
 
     def scan
-      pool = Thread::Pool.new(6)
+      pool = Thread::Pool.new(12)
       old_files = Set.new @files.keys
 
       puts 'Scanning HDFS, this may take a while'
@@ -77,7 +77,7 @@ module Druid
         end
       end
 
-      old_files.each do |removed_file|        
+      old_files.each do |removed_file|
         puts "Purging #{removed_file} from cache, it's not in HDFS anymore"
         @files.delete removed_file
       end
