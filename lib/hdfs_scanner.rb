@@ -62,17 +62,42 @@ module Druid
     def scan
       pool = Thread::Pool.new(12)
       old_files = Set.new @files.keys
+      folders = Hash.new {|hash, key| hash[key] = []}
 
       puts 'Scanning HDFS, this may take a while'
-      IO.popen("bash -c \"TZ=utc hadoop fs -ls #{@file_pattern}\" 2>/dev/null") do |pipe|
+
+      IO.popen("hadoop fs -ls #{@file_pattern} 2> /dev/null") do |pipe|
         while str = pipe.gets
           info = str.split(' ')
-
+          fullname = info[-1]
+          parts = fullname.split('/')
+          dir = parts[0...-1].join('/')
+          name = parts[-1]
           size = info[4].to_i
-          name = info[7]
 
-          old_files.delete name
-          scan_ls_row(pool, name, size)
+          if name == "_SUCCESS" || name == "_temporary"
+            folders[dir].unshift name
+          elsif name.start_with? "part"
+            folders[dir] << {
+              :name => fullname,
+              :size => size
+            }
+          end
+        end
+      end
+
+      puts 'Scan completed, now checking content'
+
+      folders.each do |dir, files|
+        if files[0] == "_temporary"
+          puts "#{dir} not completed yet, ignoring"
+        elsif files[0] != "_SUCCESS"
+          puts "#{dir} does not contain _SUCCESS, ignoring"
+        else
+          files[1..-1].each do |file|
+            old_files.delete file[:name]
+            scan_ls_row(pool, file[:name], file[:size])
+          end
         end
       end
 
@@ -100,10 +125,6 @@ module Druid
       if existing_info.nil? || (existing_info['size'].to_i != size)
         pool.process do
           begin
-            @lock.synchronize do
-              puts "Scanning #{name}"
-            end
-
             first,last = pig_timestamps_in name
 
             # WARNING: don't use symbols as keys, going through to_json
