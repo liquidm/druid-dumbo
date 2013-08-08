@@ -70,10 +70,9 @@ module Druid
 
           size = info[4].to_i
           name = info[7]
-          cdate = Time.parse("#{info[5]} #{info[6]} +0000").to_i
 
           old_files.delete name
-          scan_ls_row(pool, name, size, cdate)
+          scan_ls_row(pool, name, size)
         end
       end
 
@@ -96,7 +95,7 @@ module Druid
       pool.shutdown
     end
 
-    def scan_ls_row(pool, name, size, cdate)
+    def scan_ls_row(pool, name, size)
       existing_info = @files[name]
       if existing_info.nil? || (existing_info['size'].to_i != size)
         pool.process do
@@ -113,7 +112,7 @@ module Druid
                 'size' => size,
                 'start' => first,
                 'end' => last,
-                'created' => cdate
+                'created' => Time.now.to_i
               }
               puts "Found #{name}, #{@files[name]}"
             end
