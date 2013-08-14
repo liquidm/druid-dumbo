@@ -29,6 +29,9 @@ raw_start, raw_end = hdfs.range
 IO.write(state_file_name, hdfs.to_json)
 puts "We got raw data from #{Time.at raw_start} to #{Time.at raw_end}"
 
+raw_start = [raw_start, (Date.today - 60).to_time.to_i].max
+puts "Ensuring completeness of #{Time.at raw_start} to #{Time.at raw_end}"
+
 segments = {}
 
 ii = raw_start
