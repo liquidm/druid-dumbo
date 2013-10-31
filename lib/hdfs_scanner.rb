@@ -152,6 +152,25 @@ module Druid
     end
 
     def pig_timestamps_in(name)
+
+
+      apath = name.split '/'
+      parent = apath[0..-2].join '/'
+      taskId = apath.last.split('.').first.split('-').last
+
+      command = "hadoop fs -cat #{parent}/info_*-#{taskId}.gz | gunzip"
+
+      puts "Running: #{command}"
+
+      sjson = `#{command}`
+
+      if sjson && sjson.length > 0
+        info = JSON.parse(sjson)
+        puts "Found info for file #{name}: #{info}"
+        return info['earliestTimestamp'].to_i, info['latestTimestamp'].to_i
+      end
+
+
       pig_script = Dir.glob(File.join(File.dirname(__FILE__), '..', 'contrib', '*')).map{|jar| "register '#{File.expand_path(jar)}';"}.join("\n") + %Q[
         data = load '#{name}' using com.twitter.elephantbird.pig.load.JsonLoader() as (json: map[]);
         cleaned =  foreach data generate (double) json#'timestamp' as timestamp;
