@@ -6,6 +6,7 @@ GEM
       mime-types
       xml-simple
     builder (3.1.4)
+    json (1.8.0)
     mime-types (1.21)
     mysql (2.9.1)
     thread (0.0.1.1)
@@ -16,5 +17,6 @@ PLATFORMS
 
 DEPENDENCIES
   aws-s3
+  json
   mysql
   thread
