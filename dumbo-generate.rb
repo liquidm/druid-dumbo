@@ -50,38 +50,48 @@ mysql.scan.each do |mysql_segment|
   segments[start] = mysql_segment if segments.include? start
 end
 
-rescan_hours = Set.new
-rescan_files = Set.new
 
 max_hours = ENV['DRUID_MAX_HOURS_PER_JOB'].to_i
+
+
+jobs = []
 
 segments.keys.reverse.each do |start|
   info = segments[start]
   hdfs_files = hdfs.files_for start, info
   if (hdfs_files.length > 0)
-    if (max_hours == 0 or rescan_hours.length < max_hours)
-      rescan_hours.add start
-      rescan_files.merge hdfs_files
-    else
-      puts "Job queue already worth #{max_hours}h, not scheduling #{start} in this run"
-    end
+    jobs << {
+    start: start,
+    files: hdfs_files,
+    }
   elsif info.nil?
     puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
   end
 end
 
-intervals = rescan_hours.map do |time|
-  "#{Time.at(time).utc.iso8601}/#{Time.at(time+3600).utc.iso8601}"
-end
-files = rescan_files.to_a
+puts "Saving jobs..."
+IO.write('jobs.json', jobs.to_json)
+puts "done"
 
-puts 'Writing druidimport.conf for batch ingestion'
 
-IO.write(File.join(base_dir, 'druidimport.conf'), template.result(binding))
+jobs.inject(Hash.new {|hash, key| hash[key] = []}) do |stack, job|
+  slice = Time.at(job['start']).strftime("%Y-%m-%d-%H")
+  stack[slice] << job
+  stack
+end.each do |slice, day_jobs|
+  rescan_hours = Set.new
+  rescan_files = Set.new
+  day_jobs.each do |job|
+    rescan_hours.add job['start']
+    rescan_files.merge job['files']
+  end
+  intervals = rescan_hours.map do |time|
+    "#{Time.at(time).utc.iso8601}/#{Time.at(time+3600).utc.iso8601}"
+  end
+  files = rescan_files.to_a
 
-if rescan_files.empty?
-  puts 'Nothing to scan, will exit 1 now.'
-  exit 1
-else
-  puts 'And we are out. Hadoop, start your engines!'
+  conf = "druidimport-#{slice}.conf"
+  puts "Writing #{conf} for batch ingestion"
+
+  IO.write(File.join(base_dir, conf), template.result(binding))
 end
