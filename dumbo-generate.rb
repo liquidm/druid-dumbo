@@ -75,10 +75,10 @@ puts "done"
 
 
 jobs.inject(Hash.new {|hash, key| hash[key] = []}) do |stack, job|
-  day = Time.at(job['start']).to_s.split(' ')[0]
-  stack[day] << job
+  slice = Time.at(job['start']).strftime("%Y-%m-%d-%H")
+  stack[slice] << job
   stack
-end.each do |day, day_jobs|
+end.each do |slice, day_jobs|
   rescan_hours = Set.new
   rescan_files = Set.new
   day_jobs.each do |job|
@@ -90,7 +90,7 @@ end.each do |day, day_jobs|
   end
   files = rescan_files.to_a
 
-  conf = "druidimport-#{day}.conf"
+  conf = "druidimport-#{slice}.conf"
   puts "Writing #{conf} for batch ingestion"
 
   IO.write(File.join(base_dir, conf), template.result(binding))
