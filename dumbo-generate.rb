@@ -61,8 +61,8 @@ segments.keys.reverse.each do |start|
   hdfs_files = hdfs.files_for start, info
   if (hdfs_files.length > 0)
     jobs << {
-    start: start,
-    files: hdfs_files,
+    'start' => start,
+    'files' => hdfs_files,
     }
   elsif info.nil?
     puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
