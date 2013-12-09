@@ -1,0 +1,32 @@
+zookeeper_uri: localhost:2181/druid
+
+allow_full_rescan: true
+
+check_window_days: 14
+
+counter_name: events # this is the count aggregator
+
+druid_options:
+  discovery_path: /discovery
+
+db:
+  service/example:
+    input:
+      path: /history/example/hourly/*/*/*/*/*
+      format: json
+    output:
+      index_granularity: minute
+      path: /path/in/hdfs/to/put/segments
+      type: db
+      uri: jdbc:mysql:localhost/druid
+      user: druid
+      password: druid
+      table: segments
+    timestamp:
+      format: ruby
+      column: timestamp
+    metrics:
+      example: longSum
+    dimensions:
+      - foo
+      - bar
