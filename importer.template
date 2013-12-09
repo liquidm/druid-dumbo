@@ -1,0 +1,46 @@
+{
+  "dataSource": <%= data_source.to_json %>,
+  "timestampColumn": <%= conf[:timestamp][:column].to_json %>,
+  "timestampFormat": <%= conf[:timestamp][:format].to_json %>,
+
+  "dataSpec": {
+    "format": <%= conf[:input][:path].to_json %>,
+    "dimensions": <%= conf[:dimensions].to_json %>
+  },
+
+  "granularitySpec": {
+    "type":"uniform",
+    "intervals": <%= intervals.to_json %>,
+    "gran": "hour"
+  },
+  "pathSpec": {
+    "type": "static",
+    "paths": <%= files.join(',').to_json %>,
+    "filePattern": "*"
+  },
+  "rollupSpec": {
+    "aggs": [
+<% conf[:metrics].each do |name, data_type|
+    if data_type.is_a? Hash %>
+      <%= data_type.to_json %>,
+<%  else %>
+      { "type": <%= data_type.to_json %>, "name": <%= name.to_json %>, "fieldName" : <%= name.to_json %>},
+<%  end
+   end %>
+      { "type":"count", "name": <%= counter_name.to_json %> }
+    ],
+    "rollupGranularity": <%= conf[:output][:index_granularity].to_json %>
+  },
+
+  "workingPath": <%= "/tmp/druid/#{data_source}".to_json %>,
+  "segmentOutputPath": <%= conf[:output][:path].to_json %>,
+  "leaveIntermediate": false,
+  "ignoreInvalidRows" : true,
+
+  "updaterJobSpec": {
+    "type": <%= conf[:output][:type].to_json %>,
+    "connectURI": <%= conf[:output][:uri].to_json %>,
+    "user": <%= conf[:output][:user].to_json %>,
+    "password": <%= conf[:output][:password].to_json %>,
+    "segmentTable": <%= conf[:output][:table].to_json %>,
+}}
