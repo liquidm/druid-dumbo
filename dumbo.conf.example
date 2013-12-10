@@ -1,32 +1,32 @@
-zookeeper_uri: localhost:2181/druid
-
-allow_full_rescan: true
-
-check_window_days: 14
-
-counter_name: events # this is the count aggregator
-
-druid_options:
-  discovery_path: /discovery
-
+default:
+  zookeeper_uri: localhost:2181/kafka
+  druid_client:
+    discovery_path: /discovery
+  raw_input:
+    hdfs_path: /history/events/hourly/*/*/*/*/*
+    allow_full_rescan: true
+    check_window_days: 14
+    timestamp_format: ruby
+    timestamp_column: timestamp
+    format: json
+  segment_output:
+    hdfs_path: /druid/hadoop
+    counter_name: events
+    index_granularity: minute
+  database:
+    uri: jdbc:mysql:localhost/druid
+    user: druid
+    password: druid
+    table: segments
+  metrics:
+    foo: longSum
 db:
-  service/example:
-    input:
-      path: /history/example/hourly/*/*/*/*/*
-      format: json
-    output:
-      index_granularity: minute
-      path: /path/in/hdfs/to/put/segments
-      type: db
-      uri: jdbc:mysql:localhost/druid
-      user: druid
-      password: druid
-      table: segments
-    timestamp:
-      format: ruby
-      column: timestamp
-    metrics:
-      example: longSum
+  example/foo
     dimensions:
-      - foo
+      - bar
+      - baz
+  example/reduced
+    segment_output:
+      index_granularity: hour
+    dimensions:
       - bar

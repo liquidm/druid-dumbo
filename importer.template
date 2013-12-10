@@ -1,10 +1,10 @@
 {
   "dataSource": <%= data_source.to_json %>,
-  "timestampColumn": <%= conf[:timestamp][:column].to_json %>,
-  "timestampFormat": <%= conf[:timestamp][:format].to_json %>,
+  "timestampColumn": <%= conf[:raw_input][:timestamp_column].to_json %>,
+  "timestampFormat": <%= conf[:raw_input][:timestamp_format].to_json %>,
 
   "dataSpec": {
-    "format": <%= conf[:input][:path].to_json %>,
+    "format": <%= conf[:raw_input][:format].to_json %>,
     "dimensions": <%= conf[:dimensions].to_json %>
   },
 
@@ -27,20 +27,20 @@
       { "type": <%= data_type.to_json %>, "name": <%= name.to_json %>, "fieldName" : <%= name.to_json %>},
 <%  end
    end %>
-      { "type":"count", "name": <%= counter_name.to_json %> }
+      { "type":"count", "name": <%= conf[:segment_output][:counter_name].to_json %> }
     ],
-    "rollupGranularity": <%= conf[:output][:index_granularity].to_json %>
+    "rollupGranularity": <%= conf[:segment_output][:index_granularity].to_json %>
   },
 
   "workingPath": <%= "/tmp/druid/#{data_source}".to_json %>,
-  "segmentOutputPath": <%= conf[:output][:path].to_json %>,
+  "segmentOutputPath": <%= conf[:segment_output][:hdfs_path].to_json %>,
   "leaveIntermediate": false,
   "ignoreInvalidRows" : true,
 
   "updaterJobSpec": {
-    "type": <%= conf[:output][:type].to_json %>,
-    "connectURI": <%= conf[:output][:uri].to_json %>,
-    "user": <%= conf[:output][:user].to_json %>,
-    "password": <%= conf[:output][:password].to_json %>,
-    "segmentTable": <%= conf[:output][:table].to_json %>,
+    "type": "db",
+    "connectURI": <%= conf[:database][:uri].to_json %>,
+    "user": <%= conf[:database][:user].to_json %>,
+    "password": <%= conf[:database][:password].to_json %>,
+    "segmentTable": <%= conf[:database][:table].to_json %>,
 }}
