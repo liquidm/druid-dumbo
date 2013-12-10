@@ -13,11 +13,13 @@
     "intervals": <%= intervals.to_json %>,
     "gran": "hour"
   },
+
   "pathSpec": {
     "type": "static",
     "paths": <%= files.join(',').to_json %>,
     "filePattern": "*"
   },
+
   "rollupSpec": {
     "aggs": [
 <% conf[:metrics].each do |name, data_type|
@@ -42,5 +44,6 @@
     "connectURI": <%= conf[:database][:uri].to_json %>,
     "user": <%= conf[:database][:user].to_json %>,
     "password": <%= conf[:database][:password].to_json %>,
-    "segmentTable": <%= conf[:database][:table].to_json %>,
-}}
+    "segmentTable": <%= conf[:database][:table].to_json %>
+  }
+}
