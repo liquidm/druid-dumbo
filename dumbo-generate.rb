@@ -50,10 +50,6 @@ mysql.scan.each do |mysql_segment|
   segments[start] = mysql_segment if segments.include? start
 end
 
-
-max_hours = ENV['DRUID_MAX_HOURS_PER_JOB'].to_i
-
-
 jobs = []
 
 segments.keys.reverse.each do |start|
@@ -74,24 +70,31 @@ IO.write('jobs.json', jobs.to_json)
 puts "done"
 
 
+MAX_JOBS = 12
+jobs_written = 0
+
 jobs.inject(Hash.new {|hash, key| hash[key] = []}) do |stack, job|
   slice = Time.at(job['start']).strftime("%Y-%m-%d-%H")
   stack[slice] << job
   stack
 end.each do |slice, day_jobs|
-  rescan_hours = Set.new
-  rescan_files = Set.new
-  day_jobs.each do |job|
-    rescan_hours.add job['start']
-    rescan_files.merge job['files']
-  end
-  intervals = rescan_hours.map do |time|
-    "#{Time.at(time).utc.iso8601}/#{Time.at(time+3600).utc.iso8601}"
-  end
-  files = rescan_files.to_a
+  if ((jobs_written += 1) <= MAX_JOBS)
+    rescan_hours = Set.new
+    rescan_files = Set.new
+    day_jobs.each do |job|
+      rescan_hours.add job['start']
+      rescan_files.merge job['files']
+    end
+    intervals = rescan_hours.map do |time|
+      "#{Time.at(time).utc.iso8601}/#{Time.at(time+3600).utc.iso8601}"
+    end
+    files = rescan_files.to_a
 
-  conf = "druidimport-#{slice}.conf"
-  puts "Writing #{conf} for batch ingestion"
+    conf = "druidimport-#{slice}.conf"
+    puts "Writing #{conf} for batch ingestion"
 
-  IO.write(File.join(base_dir, conf), template.result(binding))
+    IO.write(File.join(base_dir, conf), template.result(binding))
+  else
+    puts "Skipping to write a job for #{slice}, too many already"
+  end
 end
