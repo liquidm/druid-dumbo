@@ -128,7 +128,7 @@ conf[:db].each do |db_name, options|
       template,
       db_name.split('/')[-1],
       options,
-      intervals,
+      intervals.map{|ii| ii.join('/')},
       files
     ))
   else
