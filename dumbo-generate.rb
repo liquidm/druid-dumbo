@@ -52,17 +52,25 @@ data_sources.each do |data_source|
   end
 
   jobs = []
+  MAX_JOBS = 12
+  jobs_written = 0
 
   segments.keys.reverse.each do |start|
-    info = segments[start]
-    hdfs_files = hdfs.files_for start, info
-    if (hdfs_files.length > 0)
-      jobs << {
-      'start' => start,
-      'files' => hdfs_files,
-      }
-    elsif info.nil?
-      puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
+    if jobs_written <= MAX_JOBS
+      info = segments[start]
+      hdfs_files = hdfs.files_for start, info
+      if (hdfs_files.length > 0)
+        jobs << {
+        'start' => start,
+        'files' => hdfs_files,
+        }
+        jobs_written += 1
+
+      elsif info.nil?
+        puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
+      end
+    else
+      puts "Skipping to write a job for #{start}, too many already"
     end
   end
 
@@ -70,33 +78,25 @@ data_sources.each do |data_source|
   IO.write('jobs.json', jobs.to_json)
   puts "done"
 
-
-  MAX_JOBS = 12
-  jobs_written = 0
-
   jobs.inject(Hash.new {|hash, key| hash[key] = []}) do |stack, job|
     slice = Time.at(job['start']).strftime("%Y-%m-%d-%H")
     stack[slice] << job
     stack
   end.each do |slice, day_jobs|
-    if ((jobs_written += 1) <= MAX_JOBS)
-      rescan_hours = Set.new
-      rescan_files = Set.new
-      day_jobs.each do |job|
-        rescan_hours.add job['start']
-        rescan_files.merge job['files']
-      end
-      intervals = rescan_hours.map do |time|
-        "#{Time.at(time).utc.iso8601}/#{Time.at(time+3600).utc.iso8601}"
-      end
-      files = rescan_files.to_a
-
-      conf = "druidimport-#{data_source}-#{slice}.conf"
-      puts "Writing #{conf} for batch ingestion"
-
-      IO.write(File.join(base_dir, conf), template.result(binding))
-    else
-      puts "Skipping to write a job for #{slice}, too many already"
+    rescan_hours = Set.new
+    rescan_files = Set.new
+    day_jobs.each do |job|
+      rescan_hours.add job['start']
+      rescan_files.merge job['files']
     end
+    intervals = rescan_hours.map do |time|
+      "#{Time.at(time).utc.iso8601}/#{Time.at(time+3600).utc.iso8601}"
+    end
+    files = rescan_files.to_a
+
+    conf = "druidimport-#{data_source}-#{slice}.conf"
+    puts "Writing #{conf} for batch ingestion"
+
+    IO.write(File.join(base_dir, conf), template.result(binding))
   end
 end
