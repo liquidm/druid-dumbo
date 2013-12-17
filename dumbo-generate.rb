@@ -8,10 +8,8 @@ require './lib/mysql_scanner.rb'
 base_dir = File.dirname(__FILE__)
 
 state_file_name = File.join(base_dir, 'hadoop_state.json')
-template_file = File.join(base_dir, 'importer.template')
 
 hadoop_state = JSON.parse(IO.read(state_file_name)) rescue {}
-template = ERB.new(IO.read(template_file))
 
 hadoop_state.each do  |key,value|
   if value.nil? or value['skip']
@@ -40,61 +38,65 @@ while ii < raw_end
   ii += 3600
 end
 
-data_source = ENV['DRUID_DATASOURCE']
+data_sources = ENV['DRUID_DATASOURCE'].split(',')
 segment_output_path = ENV['DRUID_OUTPUT_PATH'] || "/druid/deepstorage"
 
-mysql = Druid::MysqlScanner.new :data_source => data_source
+data_sources.each do |data_source|
+  template_file = File.join(base_dir, "#{data_source}-importer.template")
+  template = ERB.new(IO.read(template_file))
+  mysql = Druid::MysqlScanner.new :data_source => data_source
 
-mysql.scan.each do |mysql_segment|
-  start = mysql_segment['start']
-  segments[start] = mysql_segment if segments.include? start
-end
-
-jobs = []
-
-segments.keys.reverse.each do |start|
-  info = segments[start]
-  hdfs_files = hdfs.files_for start, info
-  if (hdfs_files.length > 0)
-    jobs << {
-    'start' => start,
-    'files' => hdfs_files,
-    }
-  elsif info.nil?
-    puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
+  mysql.scan.each do |mysql_segment|
+    start = mysql_segment['start']
+    segments[start] = mysql_segment if segments.include? start
   end
-end
 
-puts "Saving jobs..."
-IO.write('jobs.json', jobs.to_json)
-puts "done"
+  jobs = []
 
-
-MAX_JOBS = 12
-jobs_written = 0
-
-jobs.inject(Hash.new {|hash, key| hash[key] = []}) do |stack, job|
-  slice = Time.at(job['start']).strftime("%Y-%m-%d-%H")
-  stack[slice] << job
-  stack
-end.each do |slice, day_jobs|
-  if ((jobs_written += 1) <= MAX_JOBS)
-    rescan_hours = Set.new
-    rescan_files = Set.new
-    day_jobs.each do |job|
-      rescan_hours.add job['start']
-      rescan_files.merge job['files']
+  segments.keys.reverse.each do |start|
+    info = segments[start]
+    hdfs_files = hdfs.files_for start, info
+    if (hdfs_files.length > 0)
+      jobs << {
+      'start' => start,
+      'files' => hdfs_files,
+      }
+    elsif info.nil?
+      puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
     end
-    intervals = rescan_hours.map do |time|
-      "#{Time.at(time).utc.iso8601}/#{Time.at(time+3600).utc.iso8601}"
+  end
+
+  puts "Saving jobs..."
+  IO.write('jobs.json', jobs.to_json)
+  puts "done"
+
+
+  MAX_JOBS = 12
+  jobs_written = 0
+
+  jobs.inject(Hash.new {|hash, key| hash[key] = []}) do |stack, job|
+    slice = Time.at(job['start']).strftime("%Y-%m-%d-%H")
+    stack[slice] << job
+    stack
+  end.each do |slice, day_jobs|
+    if ((jobs_written += 1) <= MAX_JOBS)
+      rescan_hours = Set.new
+      rescan_files = Set.new
+      day_jobs.each do |job|
+        rescan_hours.add job['start']
+        rescan_files.merge job['files']
+      end
+      intervals = rescan_hours.map do |time|
+        "#{Time.at(time).utc.iso8601}/#{Time.at(time+3600).utc.iso8601}"
+      end
+      files = rescan_files.to_a
+
+      conf = "druidimport-#{data_source}-#{slice}.conf"
+      puts "Writing #{conf} for batch ingestion"
+
+      IO.write(File.join(base_dir, conf), template.result(binding))
+    else
+      puts "Skipping to write a job for #{slice}, too many already"
     end
-    files = rescan_files.to_a
-
-    conf = "druidimport-#{slice}.conf"
-    puts "Writing #{conf} for batch ingestion"
-
-    IO.write(File.join(base_dir, conf), template.result(binding))
-  else
-    puts "Skipping to write a job for #{slice}, too many already"
   end
 end
