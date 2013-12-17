@@ -1,0 +1,32 @@
+default:
+  zookeeper_uri: localhost:2181/kafka
+  druid_client:
+    discovery_path: /discovery
+  raw_input:
+    hdfs_path: /history/events/hourly/*/*/*/*/*
+    allow_full_rescan: true
+    check_window_days: 14
+    timestamp_format: ruby
+    timestamp_column: timestamp
+    format: json
+  segment_output:
+    hdfs_path: /druid/hadoop
+    counter_name: events
+    index_granularity: minute
+  database:
+    uri: jdbc:mysql:localhost/druid
+    user: druid
+    password: druid
+    table: segments
+  metrics:
+    foo: longSum
+db:
+  example/foo
+    dimensions:
+      - bar
+      - baz
+  example/reduced
+    segment_output:
+      index_granularity: hour
+    dimensions:
+      - bar

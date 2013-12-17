@@ -1,6 +1,5 @@
 source 'https://rubygems.org'
 
-gem 'aws-s3'
-gem 'mysql'
-gem 'thread'
-gem 'json'
+gem 'ruby-druid'
+gem 'activesupport'
+gem 'i18n'
