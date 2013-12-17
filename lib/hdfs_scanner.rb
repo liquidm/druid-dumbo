@@ -54,7 +54,7 @@ module Druid
         end
       end
 
-      puts "No druid segment for #{Time.at(start).utc}, will create using \n#{result.join("\n")}\n" unless result.empty?
+      puts "No druid segment for #{Time.at(start).utc}, will create" unless result.empty?
 
       result
     end
