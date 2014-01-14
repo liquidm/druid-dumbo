@@ -28,6 +28,7 @@ IO.write(state_file_name, hdfs.to_json)
 puts "We got raw data from #{Time.at raw_start} to #{Time.at raw_end}"
 
 raw_start = [raw_start, (Date.today - 2).to_time.to_i].max
+raw_end = [raw_end, (Date.today + 1).to_time.to_i].min
 puts "Ensuring completeness of #{Time.at raw_start} to #{Time.at raw_end}"
 
 segments = {}
@@ -52,25 +53,18 @@ data_sources.each do |data_source|
   end
 
   jobs = []
-  MAX_JOBS = 12
   jobs_written = 0
 
   segments.keys.reverse.each do |start|
-    if jobs_written <= MAX_JOBS
-      info = segments[start]
-      hdfs_files = hdfs.files_for start, info
-      if (hdfs_files.length > 0)
-        jobs << {
+    info = segments[start]
+    hdfs_files = hdfs.files_for start, info
+    if (hdfs_files.length > 0)
+      jobs << {
         'start' => start,
         'files' => hdfs_files,
-        }
-        jobs_written += 1
-
-      elsif info.nil?
-        puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
-      end
-    else
-      puts "Skipping to write a job for #{start}, too many already"
+      }
+    elsif info.nil?
+      puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
     end
   end
 
