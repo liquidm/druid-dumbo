@@ -6,6 +6,8 @@ require './lib/hdfs_scanner.rb'
 require './lib/mysql_scanner.rb'
 require 'time'
 
+MAX_JOBS=12
+
 base_dir = File.dirname(__FILE__)
 
 state_file_name = File.join(base_dir, 'hadoop_state.json')
@@ -58,18 +60,21 @@ data_sources.each do |data_source|
   end
 
   jobs = []
-  jobs_written = 0
 
   segments.keys.reverse.each do |start|
-    info = segments[start]
-    hdfs_files = hdfs.files_for start, info
-    if (hdfs_files.length > 0)
-      jobs << {
-        'start' => start,
-        'files' => hdfs_files,
-      }
-    elsif info.nil?
-      puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
+    if jobs.size < MAX_JOBS
+      info = segments[start]
+      hdfs_files = hdfs.files_for start, info
+      if (hdfs_files.length > 0)
+        jobs << {
+          'start' => start,
+          'files' => hdfs_files,
+        }
+      elsif info.nil?
+        puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
+      end
+    else
+      break
     end
   end
 
