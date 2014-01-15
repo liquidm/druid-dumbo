@@ -4,6 +4,7 @@ require 'json'
 require 'erb'
 require './lib/hdfs_scanner.rb'
 require './lib/mysql_scanner.rb'
+require 'time'
 
 base_dir = File.dirname(__FILE__)
 
@@ -28,7 +29,11 @@ IO.write(state_file_name, hdfs.to_json)
 puts "We got raw data from #{Time.at raw_start} to #{Time.at raw_end}"
 
 raw_start = [raw_start, (Date.today - 2).to_time.to_i].max
-raw_end = [raw_end, (Date.today + 1).to_time.to_i].min
+raw_end = [raw_end, (Time.now.to_i / 3600 * 3600)].min
+
+raw_start = Time.parse(ENV['DRUID_OVERRIDE_START']).to_i if ENV['DRUID_OVERRIDE_START']
+raw_end = Time.parse(ENV['DRUID_OVERRIDE_END']).to_i if ENV['DRUID_OVERRIDE_END']
+
 puts "Ensuring completeness of #{Time.at raw_start} to #{Time.at raw_end}"
 
 segments = {}
