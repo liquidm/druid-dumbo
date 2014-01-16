@@ -49,6 +49,16 @@ end
 data_sources = ENV['DRUID_DATASOURCE'].split(',')
 segment_output_path = ENV['DRUID_OUTPUT_PATH'] || "/druid/deepstorage"
 
+
+whitelist = Set.new
+
+(ENV['DRUID_OUTPUT_PATH'] || "").split(',').each do |white_range|
+  start, stop = white_range.split('/').map {|t| Time.parse(t).to_i / 3600 * 3600 }
+  start.step(stop-1, 3600) do |hour| # right hand side non-inclusive, hence -1
+    whitelist << Time.at(hour).to_i
+  end
+end
+
 data_sources.each do |data_source|
   template_file = File.join(base_dir, "#{data_source}-importer.template")
   template = ERB.new(IO.read(template_file))
@@ -66,14 +76,19 @@ data_sources.each do |data_source|
       info = segments[start]
       hdfs_files = hdfs.files_for start, info
       if (hdfs_files.length > 0)
-        jobs << {
-          'start' => start,
-          'files' => hdfs_files,
-        }
+        if (whitelist.include? start)
+          puts "Skipping whitelisted #{Time.at(start).utc}"
+        else
+          puts "Scheduling rescan of #{Time.at(start).utc} on #{data_source}"
+          jobs << {
+            'start' => start,
+            'files' => hdfs_files,
+          }
       elsif info.nil?
-        puts "No raw data available for #{Time.at(start). utc}, laggy HDFS importer?"
+        puts "No raw data available for #{Time.at(start).utc}, laggy HDFS importer?"
       end
     else
+      puts "Enough jobs for today"
       break
     end
   end
