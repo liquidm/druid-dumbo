@@ -90,7 +90,7 @@ module Druid
 
       folders.each do |dir, files|
         if files[0] == "_temporary"
-          puts "#{dir} not completed yet, ignoring"
+          # puts "#{dir} not completed yet, ignoring"
         elsif files[0] != "_SUCCESS"
           puts "#{dir} does not contain _SUCCESS, ignoring"
         else
