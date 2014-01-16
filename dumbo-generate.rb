@@ -6,7 +6,7 @@ require './lib/hdfs_scanner.rb'
 require './lib/mysql_scanner.rb'
 require 'time'
 
-MAX_JOBS=12
+MAX_JOBS=24
 
 base_dir = File.dirname(__FILE__)
 
