@@ -127,13 +127,15 @@ module Druid
           begin
             first,last = pig_timestamps_in name
 
+            created_at = Time.now.to_i
+
             # WARNING: don't use symbols as keys, going through to_json
             @lock.synchronize do
               @files[name] = {
                 'size' => size,
                 'start' => first,
-                'end' => last,
-                'created' => Time.now.to_i
+                'end' => [last, created_at].min,
+                'created' => created_at
               }
               puts "Found #{name}, #{@files[name]}"
             end
@@ -192,6 +194,12 @@ module Druid
       @files.each do |name, info|
         next if info['skip']
         start = [start, info['start']].min
+
+        if info['end'] > info['created']
+          puts "Fixing end timestamp on #{name}"
+          info['end'] = info['created']
+        end
+
         stop = [stop, info['end']].max
       end
 
