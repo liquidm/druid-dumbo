@@ -52,7 +52,7 @@ segment_output_path = ENV['DRUID_OUTPUT_PATH'] || "/druid/deepstorage"
 
 whitelist = Set.new
 
-(ENV['DRUID_OUTPUT_PATH'] || "").split(',').each do |white_range|
+(ENV['DRUID_WHITELIST'] || "").split(',').each do |white_range|
   start, stop = white_range.split('/').map {|t| Time.parse(t).to_i / 3600 * 3600 }
   start.step(stop-1, 3600) do |hour| # right hand side non-inclusive, hence -1
     whitelist << Time.at(hour).to_i
