@@ -84,6 +84,7 @@ data_sources.each do |data_source|
             'start' => start,
             'files' => hdfs_files,
           }
+        end
       elsif info.nil?
         puts "No raw data available for #{Time.at(start).utc}, laggy HDFS importer?"
       end
