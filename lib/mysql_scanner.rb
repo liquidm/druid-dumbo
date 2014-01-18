@@ -20,7 +20,7 @@ module Druid
       marker = ''
 
       puts 'Scanning mysql...'
-      @db.query("select payload from #{@table_name} where used = 1 and dataSource = #{@data_source.to_json}").each do |row|
+      @db.query("select payload from #{@table_name} where used = 1 and dataSource = #{@data_source.to_json} and payload like '%druid06%'").each do |row|
         descriptor = JSON.parse(row[0])
         if descriptor['dataSource'] == @data_source
           interval = descriptor['interval'].split('/')
