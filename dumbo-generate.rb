@@ -30,7 +30,7 @@ raw_start, raw_end = hdfs.range
 IO.write(state_file_name, hdfs.to_json)
 puts "We got raw data from #{Time.at raw_start} to #{Time.at raw_end}"
 
-raw_start = [raw_start, (Date.today - 7).to_time.to_i].max
+raw_start = [raw_start, (Date.today - 90).to_time.to_i].max
 raw_end = [raw_end, (Time.now.to_i / 3600 * 3600)].min
 
 raw_start = Time.parse(ENV['DRUID_OVERRIDE_START']).to_i if ENV['DRUID_OVERRIDE_START']
