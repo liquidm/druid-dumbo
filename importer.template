@@ -34,7 +34,7 @@
     "rollupGranularity": <%= conf[:segment_output][:index_granularity].to_json %>
   },
 
-  "workingPath": <%= "/tmp/druid/#{data_source}/#{Time.now.to_i}".to_json %>,
+  "workingPath": <%= "/tmp/druid/#{data_source}/#{Time.now.to_f}".to_json %>,
   "segmentOutputPath": <%= conf[:segment_output][:hdfs_path].to_json %>,
   "leaveIntermediate": false,
   "ignoreInvalidRows" : true,
