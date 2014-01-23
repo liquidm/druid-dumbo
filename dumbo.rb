@@ -107,7 +107,7 @@ conf[:db].each do |db_name, options|
       hdfs_count  = hdfs_content[delta_time][:counter]
 
       if hdfs_count != druid_count
-        puts({ dataSource: db_name, segment: delta_time, delta: hdfs_count - druid_count }.to_json)
+        puts "DELTA_DETECTED #{({ dataSource: db_name, segment: delta_time, delta: hdfs_count - druid_count }.to_json)}"
         segment_file = File.join(base_dir, "#{db_name.sub('/', '_')}-#{Time.at(delta_time).strftime("%Y-%m-%d-%H")}.druid")
         IO.write(segment_file, render(
           template,
