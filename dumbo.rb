@@ -33,6 +33,7 @@ template = ERB.new(IO.read(template_file))
 def scan_hdfs(path, delta)
   results = Hash.new{|hash, key| hash[key] = {files: [], counter: 0} }
   now = Time.now
+  cut_off = DateTime.new(now.year, now.month, now.day, now.hour)
   allowed_delta = delta.days
 
   IO.popen("hadoop fs -ls #{path} 2> /dev/null") do |pipe|
@@ -49,7 +50,7 @@ def scan_hdfs(path, delta)
 
       target_time = DateTime.new(year, month, day, hour) # assumes UTC
 
-      if now - target_time < allowed_delta
+      if (now - target_time < allowed_delta) and (target_time < cut_off)
         result = results[target_time]
         result[:files] << fullname
         result[:counter] += event_count
