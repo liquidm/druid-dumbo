@@ -76,8 +76,9 @@ conf[:db].each do |db_name, options|
     :segment_output,
     :database,
   ].each do |option_group|
-    (options[option_group] ||= {}).merge!(conf[:default][option_group] || {})
+    options[option_group] = (conf[:default][option_group] || {}).merge(options[option_group] || {})
   end
+
 
   puts "Scanning #{db_name} on #{options[:zookeeper_uri]}"
   druid = Druid::Client.new(options[:zookeeper_uri], options[:druid_client])
@@ -106,9 +107,15 @@ conf[:db].each do |db_name, options|
       hdfs_count  = hdfs_content[delta_time][:counter]
 
       if hdfs_count != druid_count
-        puts "Detected delta of #{hdfs_count - druid_count} events for #{db_name} at #{delta_time}"
-        intervals << [delta_time, delta_time + 1.hour]
-        files << hdfs_content[delta_time][:files]
+        puts({ dataSource: db_name, segment: delta_time, delta: hdfs_count - druid_count }.to_json)
+        segment_file = File.join(base_dir, "#{db_name.sub('/', '_')}-#{Time.at(delta_time).strftime("%Y-%m-%d-%H")}.druid")
+        IO.write(segment_file, render(
+          template,
+          db_name.split('/')[-1],
+          options,
+          [[delta_time, delta_time + 1.hour].join('/')],
+          hdfs_content[delta_time][:files]
+        ))
       end
     end
   rescue => e
@@ -121,9 +128,8 @@ conf[:db].each do |db_name, options|
     end
   end
 
-  job_file = File.join(base_dir, "#{db_name.sub('/', '_')}.druid")
-
   if intervals.length > 0
+    job_file = File.join(base_dir, "#{db_name.sub('/', '_')}.druid")
     IO.write(job_file, render(
       template,
       db_name.split('/')[-1],
@@ -131,8 +137,5 @@ conf[:db].each do |db_name, options|
       intervals.map{|ii| ii.join('/')},
       files
     ))
-  else
-    puts "Looks like #{db_name} is correct :)"
-    File.delete(job_file) if File.exist?(job_file)
   end
 end
