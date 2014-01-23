@@ -33,7 +33,6 @@ template = ERB.new(IO.read(template_file))
 def scan_hdfs(path, delta)
   results = Hash.new{|hash, key| hash[key] = {files: [], counter: 0} }
   now = Time.now
-  cut_off = DateTime.new(now.year, now.month, now.day, now.hour)
   allowed_delta = delta.days
 
   IO.popen("hadoop fs -ls #{path} 2> /dev/null") do |pipe|
@@ -50,7 +49,7 @@ def scan_hdfs(path, delta)
 
       target_time = DateTime.new(year, month, day, hour) # assumes UTC
 
-      if (now - target_time < allowed_delta) and (target_time < cut_off)
+      if (now - target_time < allowed_delta)
         result = results[target_time]
         result[:files] << fullname
         result[:counter] += event_count
@@ -110,6 +109,7 @@ conf[:db].each do |db_name, options|
       if hdfs_count != druid_count
         puts "DELTA_DETECTED #{({ dataSource: db_name, segment: delta_time, delta: hdfs_count - druid_count }.to_json)}"
         segment_file = File.join(base_dir, "#{db_name.sub('/', '_')}-#{Time.at(delta_time).strftime("%Y-%m-%d-%H")}.druid")
+        puts "DELTA_JOBFILE #{segment_file}"
         IO.write(segment_file, render(
           template,
           db_name.split('/')[-1],
