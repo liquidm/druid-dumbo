@@ -140,3 +140,5 @@ conf[:db].each do |db_name, options|
     ))
   end
 end
+
+puts "DELTA_SCAN_COMPLETED"
