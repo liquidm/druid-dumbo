@@ -119,7 +119,7 @@ conf[:db].each do |db_name, options|
 
         job_config = JSON.parse(IO.read(segment_file))
         job_config.delete('partitionsSpec')
-        IO.write(segment_file + ".fallback", job_config)
+        IO.write(segment_file + ".fallback", job_config.to_json)
 
       end
     end
