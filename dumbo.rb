@@ -14,7 +14,7 @@ def render(template, data_source, conf, intervals, files)
   template.result(binding)
 end
 
-base_dir = File.dirname(__FILE__)
+base_dir = File.expand_path(File.dirname(__FILE__))
 
 conf_file = File.join(base_dir, 'dumbo.conf')
 unless File.exist?(conf_file)
@@ -117,6 +117,11 @@ conf[:db].each do |db_name, options|
           [[delta_time, delta_time + 1.hour].join('/')],
           hdfs_content[delta_time][:files]
         ))
+
+        job_config = JSON.parse(IO.read(segment_file))
+        job_config.delete('partitionsSpec')
+        IO.write(segment_file + ".fallback", job_config)
+
       end
     end
   rescue => e

@@ -39,6 +39,10 @@
   "leaveIntermediate": false,
   "ignoreInvalidRows" : true,
 
+  "partitionsSpec": {
+    "targetPartitionSize": 8000000
+  },
+
   "updaterJobSpec": {
     "type": "db",
     "connectURI": <%= conf[:database][:uri].to_json %>,
