@@ -93,6 +93,8 @@ conf[:db].each do |db_name, options|
   # skip first and last hour as they are usually incomplete
   hdfs_intervals = hdfs_content.keys.sort[1...-1].map{|check_time| [check_time, check_time + 1.hour]}
 
+  delta_sum = 0
+
   begin
     query = druid.query(db_name)
               .time_series
@@ -106,8 +108,10 @@ conf[:db].each do |db_name, options|
 
       hdfs_count  = hdfs_content[delta_time][:counter]
 
-      if hdfs_count != druid_count
+      if (hdfs_count - druid_count).abs > 1 # seems necessary
         puts "DELTA_DETECTED #{({ dataSource: db_name, segment: delta_time, delta: druid_count - hdfs_count}.to_json)}"
+
+        delta_sum += (druid_count - hdfs_count).abs
         segment_file = File.join(base_dir, "#{db_name.sub('/', '_')}-#{Time.at(delta_time).strftime("%Y-%m-%d-%H")}.druid")
         IO.write(segment_file, render(
           template,
@@ -145,4 +149,4 @@ conf[:db].each do |db_name, options|
   end
 end
 
-puts "DELTA_SCAN_COMPLETED"
+puts "DELTA_SCAN_COMPLETED, CURRENTLY OFF BY #{delta_sum}"
