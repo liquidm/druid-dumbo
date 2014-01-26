@@ -60,6 +60,8 @@ def scan_hdfs(path, delta)
   results
 end
 
+delta_sum = 0
+
 conf[:db].each do |db_name, options|
   #db_name as symbol sucks
   db_name = db_name.to_s
@@ -79,7 +81,6 @@ conf[:db].each do |db_name, options|
     options[option_group] = (conf[:default][option_group] || {}).merge(options[option_group] || {})
   end
 
-
   puts "Scanning #{db_name} on #{options[:zookeeper_uri]}"
   druid = Druid::Client.new(options[:zookeeper_uri], options[:druid_client])
 
@@ -92,8 +93,6 @@ conf[:db].each do |db_name, options|
 
   # skip first and last hour as they are usually incomplete
   hdfs_intervals = hdfs_content.keys.sort[1...-1].map{|check_time| [check_time, check_time + 1.hour]}
-
-  delta_sum = 0
 
   begin
     query = druid.query(db_name)
@@ -113,6 +112,7 @@ conf[:db].each do |db_name, options|
 
         delta_sum += (druid_count - hdfs_count).abs
         segment_file = File.join(base_dir, "#{db_name.sub('/', '_')}-#{Time.at(delta_time).strftime("%Y-%m-%d-%H")}.druid")
+        puts "DELTA_FILE #{segment_file}"
         IO.write(segment_file, render(
           template,
           db_name.split('/')[-1],
