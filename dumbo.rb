@@ -107,7 +107,7 @@ conf[:db].each do |db_name, options|
 
       hdfs_count  = hdfs_content[delta_time][:counter]
 
-      if (hdfs_count - druid_count).abs > 1 # seems necessary
+      if (hdfs_count - druid_count).abs > 10 # seems necessary (wtf) ?
         puts "DELTA_DETECTED #{({ dataSource: db_name, segment: delta_time, delta: druid_count - hdfs_count}.to_json)}"
 
         delta_sum += (druid_count - hdfs_count).abs
