@@ -61,6 +61,7 @@ def scan_hdfs(path, delta)
 end
 
 delta_sum = 0
+delta_count = 0
 
 conf[:db].each do |db_name, options|
   #db_name as symbol sucks
@@ -94,25 +95,28 @@ conf[:db].each do |db_name, options|
   # skip first and last hour as they are usually incomplete
   hdfs_intervals = hdfs_content.keys.sort[1...-1].map{|check_time| [check_time, check_time + 1.hour]}
 
+  hdfs_interval = [[hdfs_intervals[0][0], hdfs_intervals[-1][1]]]
+
   begin
     query = druid.query(db_name)
               .time_series
               .long_sum(options[:segment_output][:counter_name])
               .granularity(:hour)
-              .intervals(hdfs_intervals)
+              .intervals(hdfs_interval)
 
+    puts query.to_json
     delta = query.send.each do |druid_numbers|
-      druid_count = druid_numbers[options[:segment_output][:counter_name]]
+      druid_count = druid_numbers[options[:segment_output][:counter_name]] rescue 0
       delta_time = DateTime.parse(druid_numbers.timestamp)
 
-      hdfs_count  = hdfs_content[delta_time][:counter]
+      hdfs_count  = hdfs_content[delta_time][:counter] rescue 0
 
-      if (hdfs_count - druid_count).abs > 10 # seems necessary (wtf) ?
-        puts "DELTA_DETECTED #{({ dataSource: db_name, segment: delta_time, delta: druid_count - hdfs_count}.to_json)}"
+      if (hdfs_count - druid_count).abs > 10 # druid seems buggy
+        puts "DELTA_DETECTED #{({ dataSource: db_name, segment: delta_time, delta: druid_count - hdfs_count, druid: druid_count, hdfs: hdfs_count}.to_json)}"
 
         delta_sum += (druid_count - hdfs_count).abs
+        delta_count += 1
         segment_file = File.join(base_dir, "#{db_name.sub('/', '_')}-#{Time.at(delta_time).strftime("%Y-%m-%d-%H")}.druid")
-        puts "DELTA_FILE #{segment_file}"
         IO.write(segment_file, render(
           template,
           db_name.split('/')[-1],
@@ -124,13 +128,14 @@ conf[:db].each do |db_name, options|
         job_config = JSON.parse(IO.read(segment_file))
         job_config.delete('partitionsSpec')
         IO.write(segment_file + ".fallback", job_config.to_json)
-
+      else
+        "puts NO_DELTA #{({ dataSource: db_name, segment: delta_time}.to_json)}"
       end
     end
   rescue => e
     if options[:raw_input][:allow_full_rescan]
       puts "Doing a full rescan for #{db_name} as it doesn't seem to exist"
-      intervals = hdfs_intervals
+      intervals = hdfs_interval
       files = hdfs_content.values.map{|c| c[:files]}.flatten
     else
       puts "Skipping #{db_name} thanks to #{e}"
@@ -150,3 +155,4 @@ conf[:db].each do |db_name, options|
 end
 
 puts "DELTA_SCAN_COMPLETED, CURRENTLY OFF BY #{delta_sum}"
+puts "DELTA_COUNT #{delta_count}"
