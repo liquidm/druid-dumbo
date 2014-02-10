@@ -30,29 +30,32 @@ end
 puts "Reading template from #{conf_file}"
 template = ERB.new(IO.read(template_file))
 
-def scan_hdfs(path, delta)
+def scan_hdfs(paths, delta)
   results = Hash.new{|hash, key| hash[key] = {files: [], counter: 0} }
   now = Time.now
   allowed_delta = delta.days
 
-  IO.popen("hadoop fs -ls #{path} 2> /dev/null") do |pipe|
-    while str = pipe.gets
-      fullname = str.split(' ')[-1]
-      info = fullname.split('/')
+  paths.split(',').each do |path|
+    puts "Scanning HDFS at #{path}"
+    IO.popen("hadoop fs -ls #{path} 2> /dev/null") do |pipe|
+      while str = pipe.gets
+        fullname = str.split(' ')[-1]
+        info = fullname.split('/')
 
-      year = info[4].to_i
-      month = info[5].to_i
-      day = info[6].to_i
-      hour = info[7].to_i
+        year = info[4].to_i
+        month = info[5].to_i
+        day = info[6].to_i
+        hour = info[7].to_i
 
-      event_count = info[-1].split('.')[3].to_i
+        event_count = info[-1].split('.')[3].to_i
 
-      target_time = DateTime.new(year, month, day, hour) # assumes UTC
+        target_time = DateTime.new(year, month, day, hour) # assumes UTC
 
-      if (now - target_time < allowed_delta)
-        result = results[target_time]
-        result[:files] << fullname
-        result[:counter] += event_count
+        if (now - target_time < allowed_delta)
+          result = results[target_time]
+          result[:files] << fullname
+          result[:counter] += event_count
+        end
       end
     end
   end
