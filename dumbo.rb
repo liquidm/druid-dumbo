@@ -35,6 +35,8 @@ def scan_hdfs(paths, delta)
   now = Time.now
   allowed_delta = delta.days
 
+  max_time = {}
+
   paths.split(',').each do |path|
     puts "Scanning HDFS at #{path}"
     IO.popen("hadoop fs -ls #{path} 2> /dev/null") do |pipe|
@@ -51,6 +53,8 @@ def scan_hdfs(paths, delta)
 
         target_time = DateTime.new(year, month, day, hour) # assumes UTC
 
+        max_time['path'] = [max_time['path'], target_time].compact.max
+
         if (now - target_time < allowed_delta)
           result = results[target_time]
           result[:files] << fullname
@@ -60,7 +64,16 @@ def scan_hdfs(paths, delta)
     end
   end
 
-  results
+  max_time = max_time.values.min
+
+  results.select do |result_time, result|
+    if result_time > max_time
+      puts "Ignoring #{result_time.to_time}, lag is currently at #{max_time.to_time}"
+      false
+    else
+      true
+    end
+  end
 end
 
 delta_sum = 0
