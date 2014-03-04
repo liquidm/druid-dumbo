@@ -53,7 +53,7 @@ def scan_hdfs(paths, delta)
 
         target_time = DateTime.new(year, month, day, hour) # assumes UTC
 
-        max_time['path'] = [max_time['path'], target_time].compact.max
+        max_time[path] = [max_time[path], target_time].compact.max
 
         if (now - target_time < allowed_delta)
           result = results[target_time]
