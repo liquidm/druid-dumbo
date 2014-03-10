@@ -41,6 +41,8 @@ def scan_hdfs(paths, delta)
     puts "Scanning HDFS at #{path}"
     IO.popen("hadoop fs -ls #{path} 2> /dev/null") do |pipe|
       while str = pipe.gets
+        next if str.start_with?("Found")
+
         fullname = str.split(' ')[-1]
         info = fullname.split('/')
 
