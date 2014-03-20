@@ -30,7 +30,7 @@ end
 puts "Reading template from #{conf_file}"
 template = ERB.new(IO.read(template_file))
 
-def scan_hdfs(paths, delta)
+def scan_hdfs(paths, delta, ignore_lag)
   results = Hash.new{|hash, key| hash[key] = {files: [], counter: 0} }
   now = Time.now
   allowed_delta = delta.days
@@ -55,7 +55,9 @@ def scan_hdfs(paths, delta)
 
         target_time = DateTime.new(year, month, day, hour) # assumes UTC
 
-        max_time['path'] = [max_time['path'], target_time].compact.max
+        unless ignore_lag.include? path
+          max_time[path] = [max_time[path], target_time].compact.max
+        end
 
         if (now - target_time < allowed_delta)
           result = results[target_time]
@@ -69,7 +71,7 @@ def scan_hdfs(paths, delta)
   max_time = max_time.values.min
 
   results.select do |result_time, result|
-    if result_time > max_time
+    if max_time && result_time > max_time
       puts "Ignoring #{result_time.to_time}, lag is currently at #{max_time.to_time}"
       false
     else
@@ -108,7 +110,7 @@ conf[:db].each do |db_name, options|
   files = []
 
   # scan for camus files
-  hdfs_content = scan_hdfs(options[:raw_input][:hdfs_path], options[:raw_input][:check_window_days])
+  hdfs_content = scan_hdfs(options[:raw_input][:hdfs_path], options[:raw_input][:check_window_days], (options[:raw_input][:ignore_lag] || "").split(','))
 
   # skip first and last hour as they are usually incomplete
   hdfs_intervals = hdfs_content.keys.sort[1...-1].map{|check_time| [check_time, check_time + 1.hour]}
