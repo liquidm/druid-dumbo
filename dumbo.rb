@@ -136,7 +136,8 @@ conf[:db].each do |db_name, options|
 
         delta_sum += (druid_count - hdfs_count).abs
         delta_count += 1
-        segment_file = File.join(base_dir, "#{db_name.sub('/', '_')}-#{Time.at(delta_time).strftime("%Y-%m-%d-%H")}.druid")
+        segment_file = File.expand_path(File.join("~","#{db_name.sub('/', '_')}-#{Time.at(delta_time).strftime("%Y-%m-%d-%H")}.druid"))
+        puts "Writing #{segment_file}"
         IO.write(segment_file, render(
           template,
           db_name.split('/')[-1],
