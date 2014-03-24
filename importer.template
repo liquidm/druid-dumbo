@@ -41,7 +41,7 @@
 
   "partitionsSpec": {
     "type": "hashed",
-    "targetPartitionSize": 8000000
+    "targetPartitionSize": 5000000
   },
 
   "updaterJobSpec": {
