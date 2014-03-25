@@ -3,7 +3,30 @@ require 'i18n/core_ext/hash'
 require 'active_support'
 require 'active_support/core_ext'
 
-def conf
+LIQUIDM = {
+  offset: 1372543200,
+  seed: %w{
+    hdfs:///metrik/mysql.seed
+  },
+  legacy: %w{
+    hdfs:///events
+    hdfs:///history/ed_reports
+  },
+  camus: %w{
+    /history/ed_bid_requests
+    /history/ed_events
+  },
+}
+
+class Time
+  def floor(granularity = 1.hour)
+    secs = self.to_i
+    offset = secs % granularity
+    Time.at(secs - offset)
+  end
+end
+
+def load_config
   base_dir = File.expand_path(File.join(File.dirname(__FILE__), '..'))
 
   conf_file = File.join(base_dir, 'dumbo.conf')
@@ -42,13 +65,23 @@ def conf
       end
     end
 
-    now = Time.now
-    reschema.sort!{ |a,b| a[:offset] <=> b[:offset] }.reverse
-    reschema[0][:start_time] = now - reschema[0][:offset]
+    if reschema.size > 0
+      now = Time.now
+      reschema.sort!{ |a,b| a[:offset] <=> b[:offset] }
 
-    (1...reschema.size).each do |pos|
-      reschema[pos][:start_time] = now - reschema[pos][:offset]
-      reschema[pos][:end_time]= now - reschema[pos - 1][:offset]
+
+      reschema.each_with_index do |config, pos|
+
+        unless reschema.size == pos + 1
+          config[:start_time] = Time.at((now - config[:offset]).floor)
+          config[:end_time] = (now - (reschema[pos + 1])[:offset]).floor
+        else
+          config[:start_time] = Time.at(LIQUIDM[:offset])
+          config[:end_time] = Time.at((now - config[:offset]).floor)
+        end
+      end
+
+      reschema << LIQUIDM
     end
 
     # write it back as an array sorted by offset
