@@ -4,7 +4,7 @@ require 'active_support'
 require 'active_support/core_ext'
 
 LIQUIDM = {
-  offset: 1372543200,
+  offset: 1372543200.0,
   seed: %w{
     hdfs:///metrik/mysql.seed
   },
@@ -37,7 +37,7 @@ def load_config
   puts "Reading conf from #{conf_file}"
   raw_conf = YAML::load_file(conf_file).deep_symbolize_keys
 
-  result = {}
+  config = {}
 
   raw_conf[:db].each do |db_name, options|
     #db_name as symbol sucks
@@ -69,19 +69,18 @@ def load_config
       now = Time.now
       reschema.sort!{ |a,b| a[:offset] <=> b[:offset] }
 
-
-      reschema.each_with_index do |config, pos|
-
+      reschema.each_with_index do |data_set, pos|
         unless reschema.size == pos + 1
-          config[:start_time] = Time.at((now - config[:offset]).floor)
-          config[:end_time] = (now - (reschema[pos + 1])[:offset]).floor
+          data_set[:start_time] = Time.at((now - data_set[:offset]).floor)
+          data_set[:end_time] = (now - (reschema[pos + 1])[:offset]).floor
         else
-          config[:start_time] = Time.at(LIQUIDM[:offset])
-          config[:end_time] = Time.at((now - config[:offset]).floor)
+          data_set[:start_time] = Time.at(LIQUIDM[:offset])
+          data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
+          data_set.merge(LIQUIDM)
         end
       end
-
-      reschema << LIQUIDM
+      LIQUIDM.delete :offset
+      options[:seed] = LIQUIDM
     end
 
     # write it back as an array sorted by offset
@@ -97,8 +96,8 @@ def load_config
       options[option_group] = (raw_conf[:default][option_group] || {}).merge(options[option_group] || {})
     end
 
-    result[db_name] = options
+    config[db_name] = options
   end
 
-  return result
+  config
 end
