@@ -50,6 +50,7 @@ def load_config
       if timestamp_pattern
         offset = timestamp_pattern[1].to_i.send(timestamp_pattern[2])
         timed_schema[:offset] = offset
+        timed_schema[:name] = timestamp
         reschema << timed_schema
       else
         puts "WARNING: Ignoring reschema #{timestamp} for #{db_name}"
@@ -71,8 +72,7 @@ def load_config
       end
     end
 
-    # write it back as an array sorted by offset
-    options[:reschema] = reschema
+    options[:reschema] = Hash[reschema.map{ |data_set| [data_set[:name], data_set] }]
 
     # these params augment defaults
     [

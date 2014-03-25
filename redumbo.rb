@@ -2,4 +2,11 @@
 require 'bundler/setup'
 require './lib/conf_loader'
 
-puts load_config.to_yaml
+
+config = load_config
+
+config.each do |db, options|
+  options[:reschema].each do |label, config|
+    puts "#{db} #{label}:\t#{config[:start_time]} - #{config[:end_time]}"
+  end
+end
