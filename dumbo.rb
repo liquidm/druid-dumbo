@@ -27,7 +27,7 @@ template_file = File.join(base_dir, 'importer.template')
 unless File.exist?(template_file)
   template_file = "/etc/druid/importer.template"
 end
-puts "Reading template from #{conf_file}"
+puts "Reading template from #{template_file}"
 template = ERB.new(IO.read(template_file))
 
 def scan_hdfs(paths, delta, ignore_lag)

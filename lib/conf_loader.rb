@@ -8,7 +8,7 @@ class Time
   def floor(granularity = 1.day)
     secs = self.to_i
     offset = secs % granularity
-    Time.at(secs - offset)
+    Time.at(secs - offset).utc
   end
 end
 
@@ -63,10 +63,10 @@ def load_config
 
       reschema.each_with_index do |data_set, pos|
         unless reschema.size == pos + 1
-          data_set[:start_time] = Time.at((now - data_set[:offset]).floor)
-          data_set[:end_time] = (now - (reschema[pos + 1])[:offset]).floor
+          data_set[:start_time] = (now - (reschema[pos + 1])[:offset]).floor
+          data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
         else
-          data_set[:start_time] = Time.at(options[:seed][:offset])
+          data_set[:start_time] = Time.at(options[:seed][:start_time])
           data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
         end
       end
