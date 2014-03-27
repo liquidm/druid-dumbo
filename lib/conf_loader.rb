@@ -5,7 +5,7 @@ require 'active_support/core_ext'
 
 
 class Time
-  def floor(granularity = 1.hour)
+  def floor(granularity = 1.day)
     secs = self.to_i
     offset = secs % granularity
     Time.at(secs - offset)
