@@ -1,13 +1,16 @@
 require "jdbc/mysql"
 require "java"
+require "json"
 
 
-def scan_mysql(db_name, database, config)
+def valid_segment_exist?(db_name, database, config, start_time, end_time)
   Jdbc::MySQL.load_driver
-  puts "Scanning mysql for valid segments"
+  puts "Scanning mysql for #{db_name} #{start_time}/#{end_time}"
 
-  dimensions = config[:dimensions].sort
-  metrics = config[:metrics].sort
+  dimensions = config[:dimensions].map{ |dimension| dimension.to_s}.sort
+  metrics = (config[:metrics].keys + ['events']).map{ |metric| metric.to_s}.sort
+
+  matches = false
 
   begin
     connection = java.sql.DriverManager.get_connection(database[:uri], database[:user], database[:password])
@@ -15,35 +18,42 @@ def scan_mysql(db_name, database, config)
 
     query = %Q{
       SELECT
-        start, end, payload
+        payload
       FROM
         #{database[:table]}
       WHERE
-        start >= "#{config[:start_time].iso8601}"
+        dataSource = #{db_name.split('/')[-1].to_json}
       AND
-        end <= "#{config[:end_time].iso8601}"
+        str_to_date(start, "%Y-%m-%dT%T") >= str_to_date(#{start_time.to_json}, "%Y-%m-%dT%T")
+      AND
+        str_to_date(end, "%Y-%m-%dT%T") <= str_to_date(#{end_time.to_json}, "%Y-%m-%dT%T")
       AND
         used = 1
-      SORT BY
+      ORDER BY
         start;
     }
 
     result_set = statement.execute_query(query);
 
     while (result_set.next) do
-      start_time = result_set.getObject("start")
-      end_time = result_set.getObject("end")
       payload = JSON.parse(result_set.getObject("payload"))
 
-      metrics_match = payload['metrics'].split(',').sort == metrics
-      dimensions_match = payload['dimensions'].split(',').sort == dimensions
+      segment_metrics = payload['metrics'].split(',').sort
+      segment_dimensions = payload['dimensions'].split(',').sort
 
-      unless (metrics_match && dimensions_match)
-        puts "#{start_time}/#{end_time}"
+      metrics_match = segment_metrics == metrics
+      dimensions_match = segment_dimensions == dimensions
+
+      if (metrics_match && dimensions_match)
+        matches = true
+      else
+        return false
       end
     end
   ensure
     statement.close
     connection.close
   end
+
+  matches
 end
