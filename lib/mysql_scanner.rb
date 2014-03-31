@@ -3,12 +3,12 @@ require "java"
 require "json"
 
 
-def valid_segment_exist?(db_name, database, config, start_time, end_time)
+def valid_segment_exist?(db_name, database, config, counter_name, start_time, end_time)
   Jdbc::MySQL.load_driver
   puts "Scanning mysql for #{db_name} #{start_time}/#{end_time}"
 
   dimensions = config[:dimensions].map{ |dimension| dimension.to_s}.sort
-  metrics = (config[:metrics].keys + ['events']).map{ |metric| metric.to_s}.sort
+  metrics = (config[:metrics].keys + [counter_name.to_s]).map{ |metric| metric.to_s}.sort
 
   matches = false
 

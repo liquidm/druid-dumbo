@@ -6,15 +6,15 @@ def locate_raw_data(db_config)
 
   result = {}
 
-  seed[:legacy_data].map do |info_file|
+  seed[:legacy_data].each do |info_file|
     puts "Reading legacy info at #{info_file}"
     legacy_files = JSON.parse(%x{hadoop fs -cat #{info_file} 2>/dev/null})
     puts "Found #{legacy_files.size} files"
     result.merge!(legacy_files)
-  end
+  end if seed[:legacy_data]
 
-  %w{camus_legacy camus}.each do |locations|
-    (seed[locations.to_sym] || []).each do |location|
+  %w{camus_legacy camus}.each do |source|
+    seed[source.to_sym].each do |location|
       puts "Scanning folders at #{location}"
       location_counter = 0
       IO.popen("hadoop fs -ls #{location} 2> /dev/null") do |pipe|
@@ -37,13 +37,18 @@ def locate_raw_data(db_config)
           result[fullname] = {
             'start' => target_time.to_time.to_i,
             'end' => target_time.to_time.to_i,
-            'source' => locations,
+            'source' => source,
+            'location' => location,
             'event_count' => event_count,
           }
         end
       end
       puts "Found #{location_counter} files"
-    end
+    end if seed[source.to_sym]
+  end
+
+  result.each do |file_name, file_info|
+    file_info['time_range'] = (file_info['start']..file_info['end'])
   end
 
   result

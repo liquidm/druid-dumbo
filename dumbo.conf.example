@@ -4,7 +4,6 @@ default:
     discovery_path: /discovery
   raw_input:
     hdfs_path: /history/events/hourly/*/*/*/*/*
-    allow_full_rescan: true
     check_window_days: 14
     timestamp_format: ruby
     timestamp_column: timestamp
