@@ -11,7 +11,7 @@
   "granularitySpec": {
     "type":"uniform",
     "intervals": <%= intervals.to_json %>,
-    "gran": "hour"
+    "gran": <%= (conf[:segment_output][:segment_granularity] || :hour).to_json %>
   },
 
   "pathSpec": {

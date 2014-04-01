@@ -1,179 +1,176 @@
 #!/usr/bin/env ruby
 require 'bundler/setup'
-require 'set'
-require 'yaml'
-require 'active_support'
 require 'druid'
-require 'erb'
-require 'ostruct'
-require 'active_support'
-require 'active_support/core_ext'
-require 'i18n/core_ext/hash'
+require 'set'
+
+require './lib/conf_loader'
+require './lib/raw_locater'
+require './lib/mysql_scanner'
 
 def render(template, data_source, conf, intervals, files)
   template.result(binding)
 end
 
-base_dir = File.expand_path(File.dirname(__FILE__))
+def files_for_timerange(raw_info, time_range)
+  file_counter = 0
+  files_in_range = Set.new
 
-conf_file = File.join(base_dir, 'dumbo.conf')
-unless File.exist?(conf_file)
-  conf_file = "/etc/druid/dumbo.conf"
-end
-puts "Reading conf from #{conf_file}"
-conf = YAML::load_file(conf_file).deep_symbolize_keys
+  raw_info.each do |file_name, file_info|
+    segment_range = (file_info['start']..file_info['end'])
 
-template_file = File.join(base_dir, 'importer.template')
-unless File.exist?(template_file)
-  template_file = "/etc/druid/importer.template"
-end
-puts "Reading template from #{conf_file}"
-template = ERB.new(IO.read(template_file))
-
-def scan_hdfs(paths, delta, ignore_lag)
-  results = Hash.new{|hash, key| hash[key] = {files: [], counter: 0} }
-  now = Time.now
-  allowed_delta = delta.days
-
-  max_time = {}
-
-  paths.split(',').each do |path|
-    puts "Scanning HDFS at #{path}"
-    IO.popen("hadoop fs -ls #{path} 2> /dev/null") do |pipe|
-      while str = pipe.gets
-        next if str.start_with?("Found")
-
-        fullname = str.split(' ')[-1]
-        info = fullname.split('/')
-
-        year = info[4].to_i
-        month = info[5].to_i
-        day = info[6].to_i
-        hour = info[7].to_i
-
-        event_count = info[-1].split('.')[3].to_i
-
-        target_time = DateTime.new(year, month, day, hour) # assumes UTC
-
-        unless ignore_lag.include? path
-          max_time[path] = [max_time[path], target_time].compact.max
-        end
-
-        if (now - target_time < allowed_delta)
-          result = results[target_time]
-          result[:files] << fullname
-          result[:counter] += event_count
-        end
+    if time_range.include?(segment_range.first) || segment_range.include?(time_range.first)
+      file_counter += 1
+      if file_name.end_with?('.gz')
+        file_parts = file_name.split('/')
+        file_parts[-1] = "*.gz"
+        files_in_range << file_parts.join('/')
+      else
+        files_in_range << file_name
       end
     end
   end
 
-  max_time = max_time.values.min
+  puts "#{file_counter} files, compacting to #{files_in_range.size} patterns"
 
-  results.select do |result_time, result|
-    if max_time && result_time > max_time
-      puts "Ignoring #{result_time.to_time}, lag is currently at #{max_time.to_time}"
-      false
-    else
-      true
-    end
-  end
+  files_in_range.to_a
 end
 
+configs = load_config
+
+base_dir = File.expand_path(File.dirname(__FILE__))
+template_file = File.join(base_dir, 'importer.template')
+unless File.exist?(template_file)
+  template_file = "/etc/druid/importer.template"
+end
+puts "Reading template from #{template_file}"
+template = ERB.new(IO.read(template_file))
+
+
 delta_sum = 0
-delta_count = 0
+delta_files = 0
+allowed_delta = 0
 
-conf[:db].each do |db_name, options|
-  #db_name as symbol sucks
-  db_name = db_name.to_s
+configs.each do |db, options|
+  max_rescan_jobs = 12
 
-  # these params override defaults
-  options[:zookeeper_uri] ||= conf[:default][:zookeeper_uri]  ||= "localhost:2181"
-  options[:metrics]       ||= conf[:default][:metrics]        ||= {}
-  options[:dimensions]    ||= conf[:default][:dimensions]     ||= []
+  druid = Druid::Client.new(options[:zookeeper_uri], options[:druid_client])
+  camus_current = Hash.new(0)
+  hdfs_counters = Hash.new(0)
+  raw_info = locate_raw_data(options)
 
-  # these params augment defaults
-  [
-    :druid_client,
-    :raw_input,
-    :segment_output,
-    :database,
-  ].each do |option_group|
-    options[option_group] = (conf[:default][option_group] || {}).merge(options[option_group] || {})
+  raw_info.each do |file_name, file_info|
+    if file_info['source'] == 'camus'
+      camus_current[file_info['location']] = [camus_current[file_info['location']], file_info['start']].max
+    end
+    if file_info['event_count']
+      hdfs_counters[Time.at(file_info['start']).floor(1.hour)] += file_info['event_count']
+    end
   end
 
-  puts "Scanning #{db_name} on #{options[:zookeeper_uri]}"
-  druid = Druid::Client.new(options[:zookeeper_uri], options[:druid_client])
+  start_time = (Time.now - options[:raw_input][:check_window_days].days).floor
+  end_time = Time.at(camus_current.values.max).floor(1.hour)
 
-  # this is what we want to populate
-  intervals = []
-  files = []
+  puts "Scanning from #{start_time} to #{end_time}"
+  query = druid.query(db)
+    .time_series
+    .long_sum(options[:segment_output][:counter_name])
+    .granularity(:hour)
+    .interval(start_time, end_time)
+  puts query.to_json
+  query.send.reverse.each do |druid_numbers|
+    segment_start = Time.parse(druid_numbers.timestamp)
+    segment_end = segment_start + 1.hour
 
-  # scan for camus files
-  hdfs_content = scan_hdfs(options[:raw_input][:hdfs_path], options[:raw_input][:check_window_days], (options[:raw_input][:ignore_lag] || "").split(','))
+    segment_start_string = druid_numbers.timestamp
+    segment_end_string = segment_end.iso8601
+  
+    time_range = (segment_start.to_i...segment_end.to_i)
 
-  # skip first and last hour as they are usually incomplete
-  hdfs_intervals = hdfs_content.keys.sort[1...-1].map{|check_time| [check_time, check_time + 1.hour]}
+    druid_count = druid_numbers[options[:segment_output][:counter_name]] rescue 0
+    hdfs_count  = hdfs_counters[segment_start]
+    delta_count = (hdfs_count - druid_count).abs
+    delta_sum += delta_sum
 
-  hdfs_interval = [[hdfs_intervals[0][0], hdfs_intervals[-1][1]]]
+    must_rescan = false
 
-  begin
-    query = druid.query(db_name)
-              .time_series
-              .long_sum(options[:segment_output][:counter_name])
-              .granularity(:hour)
-              .intervals(hdfs_interval)
+    if delta_count <= allowed_delta
+      unless valid_segment_exist?(db, options[:database], options, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
+        puts "SCHEMA_MISMATCH #{{ dataSource: db, segment: segment_start_string}.to_json}"
+        must_rescan = true
+      end
+    else
+      puts "DELTA_DETECTED #{({ dataSource: db, segment: segment_start_string, delta: druid_count - hdfs_count, druid: druid_count, hdfs: hdfs_count}.to_json)}"
+      must_rescan = true
+    end
 
-    puts query.to_json
-    delta = query.send.each do |druid_numbers|
-      druid_count = druid_numbers[options[:segment_output][:counter_name]] rescue 0
-      delta_time = DateTime.parse(druid_numbers.timestamp)
-
-      hdfs_count  = hdfs_content[delta_time][:counter] rescue 0
-
-      if (hdfs_count - druid_count).abs > 10 && hdfs_count > 0 # druid seems buggy
-        puts "DELTA_DETECTED #{({ dataSource: db_name, segment: delta_time, delta: druid_count - hdfs_count, druid: druid_count, hdfs: hdfs_count}.to_json)}"
-
-        delta_sum += (druid_count - hdfs_count).abs
-        delta_count += 1
-        segment_file = File.expand_path(File.join("~","#{db_name.sub('/', '_')}-#{Time.at(delta_time).strftime("%Y-%m-%d-%H")}.druid"))
+    if must_rescan
+      delta_files += 1
+      if max_rescan_jobs > 0
+        max_rescan_jobs -= 1
+        segment_file = File.expand_path(File.join("~","#{db.sub('/', '_')}-#{segment_start.strftime("%Y-%m-%d-%H")}.druid"))
         puts "Writing #{segment_file}"
         IO.write(segment_file, render(
-          template,
-          db_name.split('/')[-1],
-          options,
-          [[delta_time, delta_time + 1.hour].join('/')],
-          hdfs_content[delta_time][:files]
-        ))
+            template,
+            db.split('/')[-1],
+            options,
+            [[segment_start_string, segment_end_string].join('/')],
+            files_for_timerange(raw_info, time_range)
+          ))
 
         job_config = JSON.parse(IO.read(segment_file))
         job_config.delete('partitionsSpec')
         IO.write(segment_file + ".fallback", job_config.to_json)
       else
-        "puts NO_DELTA #{({ dataSource: db_name, segment: delta_time}.to_json)}"
+       puts "Skipping, too many jobs already"
       end
     end
-  rescue => e
-    if options[:raw_input][:allow_full_rescan]
-      puts "Doing a full rescan for #{db_name} as it doesn't seem to exist"
-      intervals = hdfs_interval
-      files = hdfs_content.values.map{|c| c[:files]}.flatten
-    else
-      puts "Skipping #{db_name} thanks to #{e}"
+  end
+
+  options[:reschema].each do |label, config|
+    max_reschema_jobs = 2
+    puts "#{db} #{label}:\t#{config[:start_time]} - #{config[:end_time]}"
+
+    config[:end_time].to_i.step(config[:start_time].to_i - 1.day, -1.day).each do |day|
+      segment_start = [day, config[:start_time].to_i].max
+      segment_end = day + 1.day
+
+      segment_start_string = Time.at(segment_start).utc.iso8601
+      segment_end_string = Time.at(segment_end).utc.iso8601
+      time_range = (segment_start...segment_end)
+
+      unless valid_segment_exist?(db, options[:database], config, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
+        if max_reschema_jobs > 0
+          max_reschema_jobs -= 1
+
+          if time_range.include?(options[:seed][:start_time])
+            puts "Adding seed data to this segment"
+            files_in_range += options[:seed][:seed_file]
+          end
+
+          segment_file = File.expand_path(File.join("~","#{db.to_s.tr('/', '-')}-#{label.to_s.tr('.','_')}-#{Time.at(segment_start).utc.strftime("%Y-%m-%d-%H")}.druid"))
+          puts "Writing #{segment_file}"
+
+          rescan_options = {}.merge(options)
+          rescan_options[:segment_output][:segment_granularity] = :day
+          rescan_options[:segment_output][:index_granularity] = config[:granularity]
+          rescan_options[:metrics] = config[:metrics]
+          rescan_options[:dimensions] = config[:dimensions]
+
+          IO.write(segment_file, render(
+            template,
+            db.split('/')[-1],
+            rescan_options,
+            [[segment_start_string, segment_end_string].join('/')],
+            files_for_timerange(raw_info, time_range)
+          ))
+        else
+          puts "Maximal number of jobs reached"
+          break
+        end
+      else
+        puts "Segment ok"
+      end
     end
   end
 
-  if intervals.length > 0
-    job_file = File.join(base_dir, "#{db_name.sub('/', '_')}.druid")
-    IO.write(job_file, render(
-      template,
-      db_name.split('/')[-1],
-      options,
-      intervals.map{|ii| ii.join('/')},
-      files
-    ))
-  end
 end
-
-puts "DELTA_SCAN_COMPLETED, CURRENTLY OFF BY #{delta_sum}"
-puts "DELTA_COUNT #{delta_count}"
