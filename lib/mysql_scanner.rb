@@ -66,7 +66,7 @@ def unused_segments(db_name, database)
 
     query = %Q{
       SELECT
-        payload
+        id, payload
       FROM
         #{database[:table]}
       WHERE
@@ -79,7 +79,10 @@ def unused_segments(db_name, database)
 
     result_set = statement.execute_query(query);
     while (result_set.next) do
-      result << JSON.parse(result_set.getObject("payload"))
+      segment = JSON.parse(result_set.getObject("payload"))
+      segment['id'] = result_set.getObject("id")
+
+      result << segment
     end
   ensure
     statement.close
