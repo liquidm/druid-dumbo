@@ -40,6 +40,8 @@ def load_config
       options[override_option] ||= (raw_conf[:default][override_option] || default_value)
     end
 
+    options[:seed][:epoc] = Time.parse(options[:seed][:epoc] || "2014-01-01T00:00Z").to_i
+
     # reschema overrides defaults *and* is rewritten
     reschema_raw = options[:reschema] || raw_conf[:default][:reschema] || {}
     reschema = []
@@ -66,7 +68,7 @@ def load_config
           data_set[:start_time] = (now - (reschema[pos + 1])[:offset]).floor
           data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
         else
-          data_set[:start_time] = Time.at(options[:seed][:start_time])
+          data_set[:start_time] = Time.at(options[:seed][:epoc])
           data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
         end
       end
@@ -85,6 +87,13 @@ def load_config
     end
 
     config[db_name] = options
+  end
+
+  config.each do |db,options|
+    puts "#{db} intake rescans #{options[:raw_input][:check_window_days]} days"
+    options[:reschema].each do |label, reschema|
+      puts "#{db} #{label} #{Time.at(reschema[:start_time]).utc.iso8601}/#{Time.at(reschema[:end_time]).utc.iso8601}"
+    end
   end
 
   config

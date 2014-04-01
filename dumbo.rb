@@ -126,8 +126,8 @@ configs.each do |db, options|
     end
   end
 
+  max_reschema_jobs = 7
   options[:reschema].each do |label, config|
-    max_reschema_jobs = 2
     puts "#{db} #{label}:\t#{config[:start_time]} - #{config[:end_time]}"
 
     config[:end_time].to_i.step(config[:start_time].to_i - 1.day, -1.day).each do |day|
@@ -142,7 +142,7 @@ configs.each do |db, options|
         if max_reschema_jobs > 0
           max_reschema_jobs -= 1
 
-          if time_range.include?(options[:seed][:start_time])
+          if time_range.include?(options[:seed][:epoc])
             puts "Adding seed data to this segment"
             files_in_range += options[:seed][:seed_file]
           end
