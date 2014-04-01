@@ -11,6 +11,30 @@ def render(template, data_source, conf, intervals, files)
   template.result(binding)
 end
 
+def files_for_timerange(raw_info, time_range)
+  file_counter = 0
+  files_in_range = Set.new
+
+  raw_info.each do |file_name, file_info|
+    segment_range = (file_info['start']..file_info['end'])
+
+    if time_range.include?(segment_range.first) || segment_range.include?(time_range.first)
+      file_counter += 1
+      if file_name.end_with?('.gz')
+        file_parts = file_name.split('/')
+        file_parts[-1] = "*.gz"
+        files_in_range << file_parts.join('/')
+      else
+        files_in_range << file_name
+      end
+    end
+  end
+
+  puts "#{file_counter} files, compacting to #{files_in_range.size} patterns"
+
+  files_in_range.to_a
+end
+
 configs = load_config
 
 base_dir = File.expand_path(File.dirname(__FILE__))
@@ -27,15 +51,14 @@ delta_files = 0
 allowed_delta = 0
 
 configs.each do |db, options|
-  max_jobs = 7
-  druid = Druid::Client.new(options[:zookeeper_uri], options[:druid_client])
+  max_rescan_jobs = 12
 
+  druid = Druid::Client.new(options[:zookeeper_uri], options[:druid_client])
   camus_current = Hash.new(0)
   hdfs_counters = Hash.new(0)
   raw_info = locate_raw_data(options)
 
   raw_info.each do |file_name, file_info|
-    file_info['time_range'] = (file_info['start']..file_info['end'])
     if file_info['source'] == 'camus'
       camus_current[file_info['location']] = [camus_current[file_info['location']], file_info['start']].max
     end
@@ -54,14 +77,14 @@ configs.each do |db, options|
     .granularity(:hour)
     .interval(start_time, end_time)
   puts query.to_json
-  query.send.each do |druid_numbers|
+  query.send.reverse.each do |druid_numbers|
     segment_start = Time.parse(druid_numbers.timestamp)
     segment_end = segment_start + 1.hour
 
     segment_start_string = druid_numbers.timestamp
-    segment_end_string = Time.at(segment_end).utc.iso8601
+    segment_end_string = segment_end.iso8601
   
-    time_range = (segment_start...segment_end)
+    time_range = (segment_start.to_i...segment_end.to_i)
 
     druid_count = druid_numbers[options[:segment_output][:counter_name]] rescue 0
     hdfs_count  = hdfs_counters[segment_start]
@@ -71,10 +94,8 @@ configs.each do |db, options|
     must_rescan = false
 
     if delta_count <= allowed_delta
-      if valid_segment_exist?(db, options[:database], options, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
-        puts "NO_DELTA #{{ dataSource: db, segment: segment_start_string, druid: druid_count, hdfs: hdfs_count}.to_json}"
-      else
-        puts "SCHEMA_MISMATCH #{{ dataSource: db, segment: segment_start_string, druid: druid_count, hdfs: hdfs_count}.to_json}"
+      unless valid_segment_exist?(db, options[:database], options, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
+        puts "SCHEMA_MISMATCH #{{ dataSource: db, segment: segment_start_string}.to_json}"
         must_rescan = true
       end
     else
@@ -84,10 +105,29 @@ configs.each do |db, options|
 
     if must_rescan
       delta_files += 1
+      if max_rescan_jobs > 0
+        max_rescan_jobs -= 1
+        segment_file = File.expand_path(File.join("~","#{db.sub('/', '_')}-#{segment_start.strftime("%Y-%m-%d-%H")}.druid"))
+        puts "Writing #{segment_file}"
+        IO.write(segment_file, render(
+            template,
+            db.split('/')[-1],
+            options,
+            [[segment_start_string, segment_end_string].join('/')],
+            files_for_timerange(raw_info, time_range)
+          ))
+
+        job_config = JSON.parse(IO.read(segment_file))
+        job_config.delete('partitionsSpec')
+        IO.write(segment_file + ".fallback", job_config.to_json)
+      else
+       puts "Skipping, too many jobs already"
+      end
     end
   end
 
   options[:reschema].each do |label, config|
+    max_reschema_jobs = 2
     puts "#{db} #{label}:\t#{config[:start_time]} - #{config[:end_time]}"
 
     config[:end_time].to_i.step(config[:start_time].to_i - 1.day, -1.day).each do |day|
@@ -99,34 +139,15 @@ configs.each do |db, options|
       time_range = (segment_start...segment_end)
 
       unless valid_segment_exist?(db, options[:database], config, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
-        file_counter = 0
-        files_in_range = Set.new
-
-        raw_info.each do |file_name, file_info|
-          segment_range = (file_info['start']..file_info['end'])
-
-          if time_range.include?(segment_range.first) || segment_range.include?(time_range.first)
-            file_counter += 1
-            if file_name.end_with?('.gz')
-              file_parts = file_name.split('/')
-              file_parts[-1] = "*.gz"
-              files_in_range << file_parts.join('/')
-            else
-              files_in_range << file_name
-            end
-          end
-        end
-
-        if max_jobs > 0
-          max_jobs -= 1
-          puts "Time range needs rescan, #{file_counter} files, compacting to #{files_in_range.size} patterns"
+        if max_reschema_jobs > 0
+          max_reschema_jobs -= 1
 
           if time_range.include?(options[:seed][:start_time])
             puts "Adding seed data to this segment"
             files_in_range += options[:seed][:seed_file]
           end
 
-          segment_file = File.expand_path(File.join("~","#{db.to_s.tr('/', '-')}-#{label.to_s.tr('.','_')}-#{Time.at(segment_start).utc.to_date.iso8601.split(':')[0]}.druid"))
+          segment_file = File.expand_path(File.join("~","#{db.to_s.tr('/', '-')}-#{label.to_s.tr('.','_')}-#{Time.at(segment_start).utc.strftime("%Y-%m-%d-%H")}.druid"))
           puts "Writing #{segment_file}"
 
           rescan_options = {}.merge(options)
@@ -140,10 +161,10 @@ configs.each do |db, options|
             db.split('/')[-1],
             rescan_options,
             [[segment_start_string, segment_end_string].join('/')],
-            files_in_range.to_a
+            files_for_timerange(raw_info, time_range)
           ))
         else
-          puts "Maximal number of jobs reached, exiting"
+          puts "Maximal number of jobs reached"
           break
         end
       else
