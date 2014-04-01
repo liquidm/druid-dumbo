@@ -2,9 +2,9 @@ require "jdbc/mysql"
 require "java"
 require "json"
 
+Jdbc::MySQL.load_driver
 
 def valid_segment_exist?(db_name, database, config, counter_name, start_time, end_time)
-  Jdbc::MySQL.load_driver
   puts "Scanning mysql for #{db_name} #{start_time}/#{end_time}"
 
   dimensions = config[:dimensions].map{ |dimension| dimension.to_s}.sort
@@ -56,4 +56,35 @@ def valid_segment_exist?(db_name, database, config, counter_name, start_time, en
   end
 
   matches
+end
+
+def unused_segments(db_name, database)
+  result = []
+  begin
+    connection = java.sql.DriverManager.get_connection(database[:uri], database[:user], database[:password])
+    statement  = connection.create_statement
+
+    query = %Q{
+      SELECT
+        payload
+      FROM
+        #{database[:table]}
+      WHERE
+        dataSource = #{db_name.split('/')[-1].to_json}
+      AND
+        used = 0
+      ORDER BY
+        start;
+    }
+
+    result_set = statement.execute_query(query);
+    while (result_set.next) do
+      result << JSON.parse(result_set.getObject("payload"))
+    end
+  ensure
+    statement.close
+    connection.close
+  end
+
+  result
 end
