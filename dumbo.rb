@@ -172,5 +172,7 @@ configs.each do |db, options|
       end
     end
   end
-
 end
+
+puts "DELTA_SCAN_COMPLETED, CURRENTLY OFF BY #{delta_sum}"
+puts "DELTA_COUNT #{delta_files}"
