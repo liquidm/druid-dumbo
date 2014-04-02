@@ -34,10 +34,10 @@ def load_config
       dimensions: [],
       metrics: {},
       reschema: {},
-      seed: raw_conf[:seed] || {},
+      seed: {},
       zookeeper_uri: "localhost:2181"
     }.each do |override_option, default_value|
-      options[override_option] ||= (raw_conf[:default][override_option] || default_value)
+      options[override_option] ||= (raw_conf[:default][override_option] || default_value).clone
     end
 
     options[:seed][:epoc] = Time.parse(options[:seed][:epoc] || "2014-01-01T00:00Z").to_i
