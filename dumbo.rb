@@ -89,7 +89,7 @@ configs.each do |db, options|
     druid_count = druid_numbers[options[:segment_output][:counter_name]] rescue 0
     hdfs_count  = hdfs_counters[segment_start]
     delta_count = (hdfs_count - druid_count).abs
-    delta_sum += delta_sum
+    delta_sum += delta_count
 
     must_rescan = false
 
