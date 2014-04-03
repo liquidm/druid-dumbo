@@ -96,7 +96,7 @@ configs.each do |db, options|
     if delta_count <= allowed_delta
       unless valid_segment_exist?(db, options[:database], options, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
         puts "SCHEMA_MISMATCH #{{ dataSource: db, segment: segment_start_string}.to_json}"
-        must_rescan = true
+        must_rescan = options[:reschema].size == 0 # reimport if no reschema is configured
       end
     else
       puts "DELTA_DETECTED #{({ dataSource: db, segment: segment_start_string, delta: druid_count - hdfs_count, druid: druid_count, hdfs: hdfs_count}.to_json)}"
