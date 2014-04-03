@@ -48,7 +48,7 @@ template = ERB.new(IO.read(template_file))
 
 delta_sum = 0
 delta_files = 0
-allowed_delta = 0
+allowed_delta = 10
 
 configs.each do |db, options|
   max_rescan_jobs = 12
