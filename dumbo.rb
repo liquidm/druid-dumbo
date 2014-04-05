@@ -126,7 +126,7 @@ configs.each do |db, options|
     end
   end
 
-  max_reschema_jobs = 3
+  max_reschema_jobs = 5
   options[:reschema].each do |label, config|
     puts "#{db} #{label}:\t#{config[:start_time]} - #{config[:end_time]}"
 
