@@ -137,10 +137,14 @@ configs.each do |db, options|
       segment_start_string = Time.at(segment_start).utc.iso8601
       segment_end_string = Time.at(segment_end).utc.iso8601
       time_range = (segment_start...segment_end)
+      files_in_range = files_for_timerange(raw_info, time_range)
 
-      unless valid_segment_exist?(db, options[:database], config, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
+      if files_in_range.size == 0
+        puts "No raw files found! Ignoring #{segment_start_string}."
+      elsif not valid_segment_exist?(db, options[:database], config, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
         if max_reschema_jobs > 0
           max_reschema_jobs -= 1
+
 
           if time_range.include?(options[:seed][:epoc])
             puts "Adding seed data to this segment"
@@ -155,13 +159,14 @@ configs.each do |db, options|
           rescan_options[:segment_output][:index_granularity] = config[:granularity]
           rescan_options[:metrics] = config[:metrics]
           rescan_options[:dimensions] = config[:dimensions]
+          rescan_options[:spacialDimensions] = config[:spacialDimensions]
 
           IO.write(segment_file, render(
             template,
             db.split('/')[-1],
             rescan_options,
             [[segment_start_string, segment_end_string].join('/')],
-            files_for_timerange(raw_info, time_range)
+            files_in_range
           ))
         else
           puts "Maximal number of jobs reached"

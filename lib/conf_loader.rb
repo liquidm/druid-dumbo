@@ -32,6 +32,7 @@ def load_config
 
     {
       dimensions: [],
+      spatialDimensions: [],
       metrics: {},
       reschema: {},
       seed: {},
@@ -71,6 +72,10 @@ def load_config
           data_set[:start_time] = Time.at(options[:seed][:epoc])
           data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
         end
+
+        data_set[:metrics] ||= {}
+        data_set[:dimensions] ||= []
+        data_set[:spatialDimensions] ||= []
       end
     end
 

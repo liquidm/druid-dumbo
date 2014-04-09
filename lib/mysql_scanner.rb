@@ -7,7 +7,7 @@ Jdbc::MySQL.load_driver
 def valid_segment_exist?(db_name, database, config, counter_name, start_time, end_time)
   puts "Scanning mysql for #{db_name} #{start_time}/#{end_time}"
 
-  dimensions = config[:dimensions].map{ |dimension| dimension.to_s}.sort
+  dimensions = (config[:dimensions].map{ |dimension| dimension.to_s} + config[:spatialDimensions].map{|spatial| spatial[:dimName].to_s}).sort
   metrics = (config[:metrics].keys + [counter_name.to_s]).map{ |metric| metric.to_s}.sort
 
   matches = false
@@ -43,6 +43,16 @@ def valid_segment_exist?(db_name, database, config, counter_name, start_time, en
 
       metrics_match = segment_metrics == metrics
       dimensions_match = segment_dimensions == dimensions
+
+      unless metrics_match
+        puts "METRICS IS\n#{segment_metrics}"
+        puts "METRICS SHOULD BE\n#{metrics}"
+      end
+
+      unless dimensions_match
+        puts "DIMENSIONS IS\n#{segment_dimensions}"
+        puts "DIMENSIONS SHOULD BE\n#{dimensions}"
+      end
 
       if (metrics_match && dimensions_match)
         matches = true

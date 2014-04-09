@@ -5,7 +5,8 @@
 
   "dataSpec": {
     "format": <%= conf[:raw_input][:format].to_json %>,
-    "dimensions": <%= conf[:dimensions].to_json %>
+    "dimensions": <%= conf[:dimensions].to_json %>,
+    "spatialDimensions": <%= conf[:spatialDimensions].to_json %>
   },
 
   "granularitySpec": {
