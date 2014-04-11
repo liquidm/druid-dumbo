@@ -159,7 +159,7 @@ configs.each do |db, options|
           rescan_options[:segment_output][:index_granularity] = config[:granularity]
           rescan_options[:metrics] = config[:metrics]
           rescan_options[:dimensions] = config[:dimensions]
-          rescan_options[:spacialDimensions] = config[:spacialDimensions]
+          rescan_options[:spatialDimensions] = config[:spatialDimensions]
 
           IO.write(segment_file, render(
             template,
