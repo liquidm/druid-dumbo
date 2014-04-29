@@ -7,7 +7,7 @@ require './lib/mysql_scanner'
 configs = load_config
 
 configs.each do |db, options|
-  unused = unused_segments(db, options[:database])
+  unused = used_segments(db, options[:database], false)
 
   puts "#{db}: #{unused.inject(0) { |sum, payload| sum + payload['size'] }}"
 end

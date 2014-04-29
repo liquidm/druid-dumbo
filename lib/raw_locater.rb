@@ -25,10 +25,10 @@ def locate_raw_data(db_config)
           fullname = str.split(' ')[-1]
           info = fullname.split('/')
 
-          year = info[4].to_i
-          month = info[5].to_i
-          day = info[6].to_i
-          hour = info[7].to_i
+          year = info[-5].to_i
+          month = info[-4].to_i
+          day = info[-3].to_i
+          hour = info[-2].to_i
 
           event_count = info[-1].split('.')[3].to_i
 

@@ -68,7 +68,7 @@ def valid_segment_exist?(db_name, database, config, counter_name, start_time, en
   matches
 end
 
-def unused_segments(db_name, database)
+def used_segments(db_name, database, active = true)
   result = []
   begin
     connection = java.sql.DriverManager.get_connection(database[:uri], database[:user], database[:password])
@@ -82,7 +82,7 @@ def unused_segments(db_name, database)
       WHERE
         dataSource = #{db_name.split('/')[-1].to_json}
       AND
-        used = 0
+        used = #{active ? 1 : 0}
       ORDER BY
         start;
     }
