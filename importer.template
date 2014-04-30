@@ -32,7 +32,7 @@
    end %>
       { "type":"count", "name": <%= conf[:segment_output][:counter_name].to_json %> }
     ],
-    "rowFlushBoundary": 750000,
+    "rowFlushBoundary": 500000,
     "rollupGranularity": <%= conf[:segment_output][:index_granularity].to_json %>
   },
 
