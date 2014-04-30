@@ -51,7 +51,7 @@ delta_files = 0
 allowed_delta = 10
 
 configs.each do |db, options|
-  max_rescan_jobs = 12
+  max_rescan_jobs = 4
 
   druid = Druid::Client.new(options[:zookeeper_uri], options[:druid_client])
   camus_current = Hash.new(0)
@@ -122,7 +122,7 @@ configs.each do |db, options|
     end
   end
 
-  max_reschema_jobs = 5
+  max_reschema_jobs = 2
   options[:reschema].each do |label, config|
     puts "#{db} #{label}:\t#{config[:start_time]} - #{config[:end_time]}"
 
