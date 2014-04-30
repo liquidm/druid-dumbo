@@ -116,10 +116,6 @@ configs.each do |db, options|
             [[segment_start_string, segment_end_string].join('/')],
             files_for_timerange(raw_info, time_range)
           ))
-
-        job_config = JSON.parse(IO.read(segment_file))
-        job_config.delete('partitionsSpec')
-        IO.write(segment_file + ".fallback", job_config.to_json)
       else
        puts "Skipping, too many jobs already"
       end
