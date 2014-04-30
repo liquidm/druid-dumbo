@@ -2,6 +2,7 @@
   "dataSource": <%= data_source.to_json %>,
   "timestampColumn": <%= conf[:raw_input][:timestamp_column].to_json %>,
   "timestampFormat": <%= conf[:raw_input][:timestamp_format].to_json %>,
+  "overwriteFiles": true,
 
   "dataSpec": {
     "format": <%= conf[:raw_input][:format].to_json %>,
