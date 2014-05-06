@@ -99,7 +99,7 @@ configs.each do |db, options|
         must_rescan = options[:reschema].size == 0 # reimport if no reschema is configured
       end
     else
-      puts "DELTA_DETECTED #{({ dataSource: db, segment: segment_start_string, delta: druid_count - hdfs_count, druid: druid_count, hdfs: hdfs_count}.to_json)}"
+      puts "DELTA_DETECTED #{({ dataSource: db, segment: segment_start_string, percent: (((druid_count * 100.0) / hdfs_count) - 100).round(2), delta: druid_count - hdfs_count, druid: druid_count, hdfs: hdfs_count}.to_json)}"
       must_rescan = true
     end
 

@@ -1,6 +1,7 @@
 require "jdbc/mysql"
 require "java"
 require "json"
+require "set"
 
 Jdbc::MySQL.load_driver
 
@@ -45,13 +46,19 @@ def valid_segment_exist?(db_name, database, config, counter_name, start_time, en
       dimensions_match = segment_dimensions == dimensions
 
       unless metrics_match
-        puts "METRICS IS\n#{segment_metrics}"
-        puts "METRICS SHOULD BE\n#{metrics}"
+        puts "METRICS DELTA #{(Set.new(segment_metrics) ^ metrics).to_a}"
       end
 
       unless dimensions_match
-        puts "DIMENSIONS IS\n#{segment_dimensions}"
-        puts "DIMENSIONS SHOULD BE\n#{dimensions}"
+        puts "DIMENSIONS DELTA #{(Set.new(segment_dimensions) ^ dimensions).to_a}"
+      end
+
+      segment_interval = payload["interval"].split("/").map{|timestamp| Time.parse(timestamp)}
+      desired_interval = [Time.parse(start_time), Time.parse(end_time)]
+
+      if (segment_interval != desired_interval)
+        puts "INTERVAL IS #{segment_interval}, SHOULD BE #{desired_interval}"
+        return false
       end
 
       if (metrics_match && dimensions_match)
@@ -59,6 +66,7 @@ def valid_segment_exist?(db_name, database, config, counter_name, start_time, en
       else
         return false
       end
+
     end
   ensure
     statement.close

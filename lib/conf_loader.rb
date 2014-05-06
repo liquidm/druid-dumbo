@@ -41,7 +41,8 @@ def load_config
       options[override_option] ||= (raw_conf[:default][override_option] || default_value).clone
     end
 
-    options[:seed][:epoc] = Time.parse(options[:seed][:epoc] || "2014-01-01T00:00Z").to_i
+    seed_timestamp = Time.parse(options[:seed][:epoc] || "2014-01-01T00:00Z")
+    options[:seed][:epoc] = seed_timestamp.to_i
 
     # reschema overrides defaults *and* is rewritten
     reschema_raw = options[:reschema] || raw_conf[:default][:reschema] || {}
@@ -66,11 +67,11 @@ def load_config
 
       reschema.each_with_index do |data_set, pos|
         unless reschema.size == pos + 1
-          data_set[:start_time] = (now - (reschema[pos + 1])[:offset]).floor
-          data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
+          data_set[:start_time] = [(now - (reschema[pos + 1])[:offset]).floor, seed_timestamp].max
+          data_set[:end_time] = [Time.at((now - data_set[:offset]).floor), seed_timestamp].max
         else
-          data_set[:start_time] = Time.at(options[:seed][:epoc])
-          data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
+          data_set[:start_time] = [Time.at(options[:seed][:epoc]), seed_timestamp].max
+          data_set[:end_time] = [Time.at((now - data_set[:offset]).floor), seed_timestamp].max
         end
 
         data_set[:metrics] ||= {}
