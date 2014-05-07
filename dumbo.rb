@@ -83,7 +83,7 @@ configs.each do |db, options|
 
     segment_start_string = druid_numbers.timestamp
     segment_end_string = segment_end.iso8601
-  
+
     time_range = (segment_start.to_i...segment_end.to_i)
 
     druid_count = druid_numbers[options[:segment_output][:counter_name]] rescue 0
@@ -142,7 +142,7 @@ configs.each do |db, options|
           max_reschema_jobs -= 1
 
 
-          if time_range.include?(options[:seed][:epoc])
+          if time_range.include?(options[:seed][:epoc]) and options[:seed][:seed_file]
             puts "Adding seed data to this segment"
             files_in_range += options[:seed][:seed_file]
           end
