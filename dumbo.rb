@@ -138,7 +138,7 @@ configs.each do |db, options|
       if files_in_range.size == 0
         puts "No raw files found! Ignoring #{segment_start_string}."
       elsif segment_start == segment_end
-        puts "Not enough time passed, skipping #{segment_start_string}."
+        puts "Skipping #{day}, before start time"
       elsif not valid_segment_exist?(db, options[:database], config, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
         if max_reschema_jobs > 0
           max_reschema_jobs -= 1
