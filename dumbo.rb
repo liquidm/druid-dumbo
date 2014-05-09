@@ -68,7 +68,7 @@ configs.each do |db, options|
   end
 
   start_time = (Time.now - options[:raw_input][:check_window_days].days).floor
-  end_time = Time.at(camus_current.values.min).floor(1.hour) - 1.hour
+  end_time = Time.at(camus_current.values.min).floor(1.hour)
 
   puts "Scanning from #{start_time} to #{end_time}"
   puts "Max skew: #{Time.at(camus_current.values.max) - end_time}"
