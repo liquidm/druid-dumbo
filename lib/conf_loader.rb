@@ -68,10 +68,10 @@ def load_config
       reschema.each_with_index do |data_set, pos|
         unless reschema.size == pos + 1
           data_set[:start_time] = [(now - (reschema[pos + 1])[:offset]).floor, seed_timestamp].max
-          data_set[:end_time] = [Time.at((now - data_set[:offset]).floor), seed_timestamp].max
+          data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
         else
           data_set[:start_time] = [Time.at(options[:seed][:epoc]), seed_timestamp].max
-          data_set[:end_time] = [Time.at((now - data_set[:offset]).floor), seed_timestamp].max
+          data_set[:end_time] = Time.at((now - data_set[:offset]).floor)
         end
 
         data_set[:metrics] ||= {}
