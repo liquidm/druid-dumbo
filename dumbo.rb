@@ -95,7 +95,8 @@ configs.each do |db, options|
 
     must_rescan = false
 
-    if delta_percentage < 0.1 # allow some skew
+    if delta_percentage.abs < 0.1 # allow some skew
+      puts "DELTA_ACCEPTABLE #{({ dataSource: db, segment: segment_start_string, percent: delta_percentage, delta: druid_count - hdfs_count}.to_json)}"
       unless valid_segment_exist?(db, options[:database], options, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
         puts "SCHEMA_MISMATCH #{{ dataSource: db, segment: segment_start_string}.to_json}"
         must_rescan = options[:reschema].size == 0 # reimport if no reschema is configured
