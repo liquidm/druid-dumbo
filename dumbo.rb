@@ -91,11 +91,11 @@ configs.each do |db, options|
     hdfs_count  = hdfs_counters[segment_start]
     delta_count = (hdfs_count - druid_count).abs
     delta_sum += delta_count
-    delta_percentage = (((druid_count * 100.0) / hdfs_count) - 100).round(2)
+    delta_percentage = (((druid_count * 100.0) / hdfs_count) - 100).round(4)
 
     must_rescan = false
 
-    if delta_percentage.abs < 0.1 # allow some skew
+    if delta_percentage.abs < 0.001 # allow some skew
       puts "DELTA_ACCEPTABLE #{({ dataSource: db, segment: segment_start_string, percent: delta_percentage, delta: druid_count - hdfs_count}.to_json)}"
       unless valid_segment_exist?(db, options[:database], options, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
         puts "SCHEMA_MISMATCH #{{ dataSource: db, segment: segment_start_string}.to_json}"
