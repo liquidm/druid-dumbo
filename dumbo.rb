@@ -78,7 +78,7 @@ configs.each do |db, options|
     .granularity(:hour)
     .interval(start_time, end_time)
   puts query.to_json
-  query.send.each do |druid_numbers|
+  query.send.reverse.each do |druid_numbers|
     segment_start = Time.parse(druid_numbers.timestamp)
     segment_end = segment_start + 1.hour
 
