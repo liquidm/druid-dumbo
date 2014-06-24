@@ -44,7 +44,7 @@
 
   "partitionsSpec": {
     "type": "hashed",
-    "numShards": <%= conf[:segment_output][:num_shards] || 10 %>
+    "numShards": <%= conf[:segment_output][:num_shards] || 12 %>
   },
 
   "updaterJobSpec": {

@@ -50,7 +50,7 @@ delta_sum = 0
 delta_files = 0
 
 configs.each do |db, options|
-  max_rescan_jobs = 4
+  max_rescan_jobs = options[:raw_input][:max_rescan_jobs] || 4
 
   druid = Druid::Client.new(options[:zookeeper_uri], options[:druid_client])
   camus_current = Hash.new(0)
@@ -78,7 +78,7 @@ configs.each do |db, options|
     .granularity(:hour)
     .interval(start_time, end_time)
   puts query.to_json
-  query.send.reverse.each do |druid_numbers|
+  query.send.each do |druid_numbers|
     segment_start = Time.parse(druid_numbers.timestamp)
     segment_end = segment_start + 1.hour
 
@@ -95,7 +95,7 @@ configs.each do |db, options|
 
     must_rescan = false
 
-    if delta_percentage.abs < 0.001 # allow some skew
+    if delta_count < 10 # allow some skew
       puts "DELTA_ACCEPTABLE #{({ dataSource: db, segment: segment_start_string, percent: delta_percentage, delta: druid_count - hdfs_count}.to_json)}"
       unless valid_segment_exist?(db, options[:database], options, options[:segment_output][:counter_name], segment_start_string, segment_end_string)
         puts "SCHEMA_MISMATCH #{{ dataSource: db, segment: segment_start_string}.to_json}"
@@ -125,7 +125,7 @@ configs.each do |db, options|
     end
   end
 
-  max_reschema_jobs = 2
+  max_reschema_jobs = options[:raw_input][:max_reschema_jobs] || 2
   options[:reschema].each do |label, config|
     puts "#{db} #{label}:\t#{config[:start_time]} - #{config[:end_time]}"
 
