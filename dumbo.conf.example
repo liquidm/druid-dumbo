@@ -1,0 +1,60 @@
+---
+default:
+  seed:
+    epoc: '2014-01-01T00:00:00+00:00'
+    camus_legacy:
+    - hdfs://hadoop2/base/topic-no-longer-imported/hourly/*/*/*/*/*
+    camus:
+    - hdfs://hadoop2/base/active-topic/hourly/*/*/*/*/*
+    - hdfs://hadoop2/base/active-topic2/hourly/*/*/*/*/*
+  zookeeper_uri: "zk1.example.com/druid"
+  druid_client:
+    discovery_path: /discoveryPath
+  raw_input:
+    check_window_days: 1
+    max_rescan_jobs: 4
+    max_reschema_jobs: 300
+    timestamp_format: ruby
+    timestamp_column: timestamp
+    format: json
+  segment_output:
+    hdfs_path: s3n://druid-deepstorage/druid.rescan
+    counter_name: events
+  database:
+    type: db
+    uri: jdbc:mysql://db/druid
+    user: druid
+    password: diurd
+    table: druid_segments
+db:
+  example/small:
+    segment_output:
+      index_granularity: minute
+    metrics:
+      foo: longSum
+      bar: longSum
+    dimensions:
+    - one
+    - two
+    - three
+    reschema:
+      3.days:
+        granularity: hour
+        metrics:
+          foo: longSum
+        dimensions:
+        - one
+        - two
+  events/big:
+    segment_output:
+      index_granularity: minute
+      num_shards: 20
+    metrics:
+      foo: longSum
+      bar: longSum
+      baz: hyperUnique
+    dimensions:
+    - one
+    - two
+    - three
+    - four
