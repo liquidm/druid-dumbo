@@ -1,0 +1,62 @@
+#!/usr/bin/env ruby
+
+ROOT = File.expand_path('../..', __FILE__)
+
+require 'bundler/setup'
+require 'liquid/boot'
+require 'dumbo/cli'
+
+CLI.for(Dumbo::CLI) do
+  option :window,
+    :short => '-w HOURS',
+    :long => '--window HOURS',
+    :description => 'scan window in hours',
+    :default => 3,
+    :proc => Proc.new { |x| x.to_i }
+
+  option :offset,
+    :short => '-o HOURS',
+    :long => '--offset HOURS',
+    :description => 'offset from now used as interval end',
+    :default => 3,
+    :proc => Proc.new { |x| x.to_i }
+
+  option :topics,
+    :short => '-t LIST',
+    :long => '--topics LIST',
+    :description => 'Topics to process (comma seperated)',
+    :proc => Proc.new { |x| x.split(',') }
+
+  option :namenodes,
+    :short => '-n LIST',
+    :long => '--namenodes LIST',
+    :description => 'HDFS namenodes (comma seperated)',
+    :default => %w(localhost),
+    :proc => Proc.new { |x| x.split(',') }
+
+  option :zookeeper,
+    :short => '-z URI',
+    :long => '--zookeeper URI',
+    :description => 'zookeeper URI',
+    :default => 'localhost:2181/druid'
+
+  option :overlord,
+    :short => '-o URI',
+    :long => '--overlord URI',
+    :description => 'overlord URI',
+    :default => 'http://localhost:8090/druid/indexer/v1/task'
+
+  option :database,
+    :short => '-d PATH',
+    :long => '--database PATH',
+    :description => 'path to database config',
+    :default => 'database.json'
+
+  option :sources,
+    :short => '-s PATH',
+    :long => '--source PATH',
+    :description => 'path to sources config',
+    :default => 'sources.json'
+end.run
+
+# vim: et ts=2 sw=2

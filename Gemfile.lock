@@ -1,0 +1,76 @@
+GIT
+  remote: git://github.com/ruby-druid/ruby-druid.git
+  revision: 173bfdf04515b2ae2a79e52740a72a88910bf757
+  specs:
+    ruby-druid (0.2.0.rc3)
+      activemodel
+      activesupport
+      iso8601
+      multi_json
+      rest-client
+      zk
+
+GEM
+  remote: https://rubygems.org/
+  specs:
+    activemodel (4.2.1)
+      activesupport (= 4.2.1)
+      builder (~> 3.1)
+    activesupport (4.2.1)
+      i18n (~> 0.7)
+      json (~> 1.7, >= 1.7.7)
+      minitest (~> 5.1)
+      thread_safe (~> 0.3, >= 0.3.4)
+      tzinfo (~> 1.1)
+    builder (3.2.2)
+    domain_name (0.5.24)
+      unf (>= 0.0.5, < 1.0.0)
+    erubis (2.7.0)
+    http-cookie (1.0.2)
+      domain_name (~> 0.5)
+    i18n (0.7.0)
+    iso8601 (0.8.6)
+    jmx4r (0.1.4)
+    json (1.8.2)
+    liquid-ext (3.5.3)
+      activesupport
+      erubis
+      jmx4r
+      mixlib-cli
+      multi_json
+      terminal-table
+    little-plugger (1.1.3)
+    logging (1.8.2)
+      little-plugger (>= 1.1.3)
+      multi_json (>= 1.8.4)
+    mime-types (2.5)
+    minitest (5.6.1)
+    mixlib-cli (1.5.0)
+    multi_json (1.11.0)
+    mysql2 (0.3.18)
+    netrc (0.10.3)
+    rest-client (1.8.0)
+      http-cookie (>= 1.0.2, < 2.0)
+      mime-types (>= 1.16, < 3.0)
+      netrc (~> 0.7)
+    terminal-table (1.4.5)
+    thread_safe (0.3.5)
+    tzinfo (1.2.2)
+      thread_safe (~> 0.1)
+    unf (0.1.4)
+      unf_ext
+    unf_ext (0.0.7.1)
+    webhdfs (0.6.0)
+    zk (1.9.5)
+      logging (~> 1.8.2)
+      zookeeper (~> 1.4.0)
+    zookeeper (1.4.10)
+
+PLATFORMS
+  ruby
+
+DEPENDENCIES
+  liquid-ext
+  mysql2
+  ruby-druid!
+  webhdfs

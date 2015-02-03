@@ -1,0 +1,14 @@
+*.a
+*.bundle
+*.json
+*.o
+*.so
+.bundle/
+.yardoc
+_yardoc/
+coverage/
+doc/
+mkmf.log
+pkg/
+spec/reports/
+tmp/
