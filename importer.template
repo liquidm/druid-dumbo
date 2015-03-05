@@ -34,6 +34,7 @@
       paths: files.join(','),
     },
     metadataUpdateSpec: {
+      type: :metadata,
       connectURI: conf[:database][:uri],
       user: conf[:database][:user],
       password: conf[:database][:password],
