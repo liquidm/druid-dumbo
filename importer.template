@@ -1,55 +1,47 @@
 <%= JSON.pretty_generate({
-  dataSchema: {
-    dataSource: data_source,
-    parser: {
-      parseSpec: {
-        format: conf[:raw_input][:format],
-        timestampSpec: {
-          column: conf[:raw_input][:timestamp_column],
-          format: conf[:raw_input][:timestamp_format],
-        },
-        dimensionsSpec: {
-          dimensions: conf[:dimensions],
-          spatialDimensions: conf[:spatialDimensions],
+  "type": "index_hadoop",
+  "spec": {
+    dataSchema: {
+      dataSource: data_source,
+      parser: {
+        parseSpec: {
+          format: conf[:raw_input][:format],
+          timestampSpec: {
+            column: conf[:raw_input][:timestamp_column],
+            format: conf[:raw_input][:timestamp_format],
+          },
+          dimensionsSpec: {
+            dimensions: conf[:dimensions],
+            spatialDimensions: conf[:spatialDimensions],
+          }
         }
+      },
+      metricsSpec: conf[:metrics].map do |name, data_type|
+        if data_type.is_a? Hash
+          data_type
+        else
+          { type: data_type, name: name, fieldName: name }
+        end
+      end + [{ type: "count", name: conf[:segment_output][:counter_name] }],
+      granularitySpec: {
+        segmentGranularity: (conf[:segment_output][:segment_granularity] || :hour),
+        queryGranularity: conf[:segment_output][:index_granularity],
+        intervals: intervals,
       }
     },
-    metricsSpec: conf[:metrics].map do |name, data_type|
-      if data_type.is_a? Hash
-        data_type
-      else
-        { type: data_type, name: name, fieldName: name }
-      end
-    end + [{ type: "count", name: conf[:segment_output][:counter_name] }],
-    granularitySpec: {
-      segmentGranularity: (conf[:segment_output][:segment_granularity] || :hour),
-      queryGranularity: conf[:segment_output][:index_granularity],
-      intervals: intervals,
-    }
-  },
-  ioConfig: {
-    type: "hadoop",
-    inputSpec: {
-      type: "static",
-      paths: files.join(','),
+    ioConfig: {
+      type: "hadoop",
+      inputSpec: {
+        type: "static",
+        paths: files.join(','),
+      },
     },
-    metadataUpdateSpec: {
-      type: :metadata,
-      connectURI: conf[:database][:uri],
-      user: conf[:database][:user],
-      password: conf[:database][:password],
-      segmentTable: conf[:database][:table],
+    tuningConfig: {
+      type: "hadoop",
+      partitionsSpec: {
+        type: "hashed",
+        numShards: conf[:segment_output][:num_shards] || 12,
+      },
     },
-    segmentOutputPath:  conf[:segment_output][:hdfs_path],
-  },
-  tuningConfig: {
-    type: "hadoop",
-    workingPath: "/tmp/druid/#{data_source}/#{Time.now.to_f}",
-    partitionsSpec: {
-      type: "hashed",
-      numShards: conf[:segment_output][:num_shards] || 12,
-    },
-    leaveIntermediate: "false",
-    overwriteFiles: true,
   },
 }) %>
