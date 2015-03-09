@@ -1,6 +1,6 @@
 <%= JSON.pretty_generate({
-  "type": "index_hadoop",
-  "spec": {
+  type: "index_hadoop",
+  spec: {
     dataSchema: {
       dataSource: data_source,
       parser: {
