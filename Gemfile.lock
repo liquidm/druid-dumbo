@@ -1,12 +1,16 @@
 GEM
   remote: https://rubygems.org/
   specs:
-    activesupport (4.2.0)
+    activesupport (4.2.1)
       i18n (~> 0.7)
       json (~> 1.7, >= 1.7.7)
       minitest (~> 5.1)
       thread_safe (~> 0.3, >= 0.3.4)
       tzinfo (~> 1.1)
+    domain_name (0.5.23)
+      unf (>= 0.0.5, < 1.0.0)
+    http-cookie (1.0.2)
+      domain_name (~> 0.5)
     i18n (0.7.0)
     jdbc-mysql (5.1.33)
     json (1.8.2-java)
@@ -18,7 +22,8 @@ GEM
     minitest (5.5.1)
     multi_json (1.11.0)
     netrc (0.10.3)
-    rest-client (1.7.3)
+    rest-client (1.8.0)
+      http-cookie (>= 1.0.2, < 2.0)
       mime-types (>= 1.16, < 3.0)
       netrc (~> 0.7)
     ruby-druid (0.1.9)
@@ -26,9 +31,11 @@ GEM
       zk
     slyphon-log4j (1.2.15)
     slyphon-zookeeper_jar (3.3.5-java)
-    thread_safe (0.3.4-java)
+    thread_safe (0.3.5-java)
     tzinfo (1.2.2)
       thread_safe (~> 0.1)
+    unf (0.1.4-java)
+    webhdfs (0.6.0)
     zk (1.9.5)
       logging (~> 1.8.2)
       zookeeper (~> 1.4.0)
@@ -44,3 +51,4 @@ DEPENDENCIES
   i18n
   jdbc-mysql
   ruby-druid
+  webhdfs

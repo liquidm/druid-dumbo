@@ -36,7 +36,9 @@ def load_config
       metrics: {},
       reschema: {},
       seed: {},
-      zookeeper_uri: "localhost:2181"
+      zookeeper_uri: "localhost:2181",
+      backupFolder: "/backup/druid",
+      hdfsNamenodes: ["master1.dw.lqm.io", "master2.dw.lqm.io"],
     }.each do |override_option, default_value|
       options[override_option] ||= (raw_conf[:default][override_option] || default_value).clone
     end
