@@ -54,9 +54,21 @@ CLI.for(Dumbo::CLI) do
 
   option :sources,
     :short => '-s PATH',
-    :long => '--source PATH',
+    :long => '--sources PATH',
     :description => 'path to sources config',
     :default => 'sources.json'
+
+  option :modes,
+    :short => '-m MODES',
+    :long => '--modes MODES',
+    :description => 'modes/operations to perform (verify, unshard, daily)',
+    :default => [],
+    :proc => Proc.new { |x| x.split(',') }
+
+  option :dryrun,
+    :short => '-N',
+    :long => '--dryrun',
+    :description => 'do not submit tasks to overlord (dry-run)'
 end.run
 
 # vim: et ts=2 sw=2

@@ -22,32 +22,36 @@ module Dumbo
     end
 
     def run
-      $log.info("validating events from HDFS")
-      @segments = Dumbo::Segment.all(@db, @druid)
-      @topics.each do |topic|
-        validate_events(topic)
+      if opts[:modes].include?("verify")
+        $log.info("validating events from HDFS")
+        @segments = Dumbo::Segment.all(@db, @druid)
+        @topics.each do |topic|
+          validate_events(topic)
+        end
+        run_tasks
       end
-      run_tasks
 
-      $log.info("merging segment shards")
-      @segments = Dumbo::Segment.all(@db, @druid)
-      @topics.each do |topic|
-        unshard_segments(topic)
+      if opts[:modes].include?("unshard")
+        $log.info("merging segment shards")
+        @segments = Dumbo::Segment.all(@db, @druid)
+        @topics.each do |topic|
+          unshard_segments(topic)
+        end
+        run_tasks
       end
-      run_tasks
 
-      $log.info("validating daily segments")
-      @segments = Dumbo::Segment.all(@db, @druid)
-      @topics.each do |topic|
-        reingest_daily(topic)
+      if opts[:modes].include?("daily")
+        $log.info("validating daily segments")
+        @segments = Dumbo::Segment.all(@db, @druid)
+        @topics.each do |topic|
+          reingest_daily(topic)
+        end
+        run_tasks
       end
-      run_tasks
     end
 
     def run_tasks
-      #@tasks.each do |task|
-      #  task.generate!
-      #end
+      return if opts[:dryrun]
 
       @tasks.each do |task|
         task.run!(opts[:overlord])
