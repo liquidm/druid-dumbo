@@ -51,11 +51,15 @@ module Dumbo
     end
 
     def run_tasks
-      return if opts[:dryrun]
-
       @tasks.each do |task|
-        task.run!(opts[:overlord])
+        if opts[:dryrun]
+          puts task.inspect
+        else
+          task.run!(opts[:overlord])
+        end
       end
+
+      return if opts[:dryrun]
 
       while @tasks.length > 0
         $log.info("waiting for #{@tasks.length} tasks=#{@tasks.map(&:id)}")
@@ -115,9 +119,40 @@ module Dumbo
           rebuild = true
         end
 
-        next unless rebuild
+        if rebuild
+          @tasks << Task::IndexHadoop.new(topic, [slot.time, slot.time+1.hour], @sources[topic], slot.paths)
+          next
+        end
 
-        @tasks << Task::IndexHadoop.new(topic, [slot.time, slot.time+1.hour], @sources[topic], slot.paths)
+        segment.metadata['columns'].each do |name, column|
+          next if column['type'] == 'STRING' # dimension column
+
+          case name
+          when '__time', 'events'
+            type = 'LONG'
+          else
+            case source['aggregators'][name]
+            when 'doubleSum'
+              type = 'FLOAT'
+            when 'longSum'
+              type = 'LONG'
+            else
+              type = 'unknown'
+            end
+          end
+
+          if type != column['type']
+            $log.info("column type mismatch", for: slot.time, column: name, expected: type, got: column['type'])
+            rebuild = true
+          end
+        end
+
+        if rebuild
+          source = @sources[topic]
+          source['dataSource'] = topic
+          @tasks << Task::Index.new(topic, [slot.time, slot.time+1.hour], source, "hour", "minute")
+          next
+        end
       end
     end
 

@@ -50,6 +50,24 @@ module Dumbo
       ds.post(query).first['result']['events'] rescue 0
     end
 
+    def metadata
+      @metadata ||= metadata!
+    end
+
+    def metadata!(interval = nil)
+      interval ||= @interval
+      query = Druid::Query::Builder.new
+        .metadata
+        .interval(interval.first, interval.last)
+
+      ds = nil
+      while ds.nil?
+        ds = @druid.data_source("broker/#{@source}")
+      end
+
+      ds.post(query).first
+    end
+
     def as_json(options = {})
       @payload
     end
