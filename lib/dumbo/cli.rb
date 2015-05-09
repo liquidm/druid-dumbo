@@ -83,38 +83,30 @@ module Dumbo
         segment_events = segment.events!([slot.time, slot.time+1.hour]) if segment
         rebuild = false
 
+        source = @sources[topic]
+
+        source['metrics'] = Set.new(source['aggregators'].keys).add("events")
+        metrics = Set.new(segments.map(&:metrics).flatten)
+
+        source['dimensions'] = Set.new(source['dimensions'])
+        dimensions = Set.new(segments.map(&:dimensions))
+
         if !segment
           $log.info("found missing segment for", slot: slot.time)
           rebuild = true
         elsif segment_events != slot.events
           $log.info("event mismatch", for: slot.time, delta: slot.events - segment_events, hdfs: slot.events, segment: segment_events)
           rebuild = true
-        end
-
-        source = @sources[topic]
-
-        source['metrics'] = Set.new(source['aggregators'].keys).add("events")
-        metrics = Set.new(segments.map(&:metrics).flatten)
-
-        if metrics < source['metrics']
+        elsif metrics < source['metrics']
           $log.info("found new metrics", for: slot.time, delta: (source['metrics'] - metrics).to_a)
           rebuild = true
-        end
-
-        if metrics > source['metrics']
+        elsif metrics > source['metrics']
           $log.info("found deleted metrics", for: slot.time, delta: (metrics - source['metrics']).to_a)
           rebuild = true
-        end
-
-        source['dimensions'] = Set.new(source['dimensions'])
-        dimensions = Set.new(segments.map(&:dimensions))
-
-        if dimensions < source['dimensions']
+        elsif dimensions < source['dimensions']
           $log.info("found new dimensions", for: slot.time, delta: (source['dimensions'] - dimensions).to_a)
           rebuild = true
-        end
-
-        if dimensions > source['dimensions']
+        elsif dimensions > source['dimensions']
           $log.info("found deleted dimensions", for: slot.time, delta: (dimensions - source['dimensions']).to_a)
           rebuild = true
         end
