@@ -31,6 +31,15 @@ module Dumbo
         run_tasks
       end
 
+      if opts[:modes].include?("verify")
+        $log.info("validating schema")
+        @segments = Dumbo::Segment.all(@db, @druid)
+        @topics.each do |topic|
+          validate_schema(topic)
+        end
+        run_tasks
+      end
+
       if opts[:modes].include?("unshard")
         $log.info("merging segment shards")
         @segments = Dumbo::Segment.all(@db, @druid)
@@ -111,11 +120,28 @@ module Dumbo
           rebuild = true
         end
 
-        if rebuild
-          @tasks << Task::IndexHadoop.new(topic, [slot.time, slot.time+1.hour], @sources[topic], slot.paths)
-          next
+        next unless rebuild
+        @tasks << Task::IndexHadoop.new(topic, [slot.time, slot.time+1.hour], @sources[topic], slot.paths)
+      end
+    end
+
+    def validate_schema(topic)
+      $log.info("validating schema for", topic: topic)
+      @hdfs.slots(topic, @interval).each do |slot|
+        next if slot.paths.length < 1 || slot.events < 1
+
+        source = @sources[topic]
+        source['dataSource'] = topic
+
+        segments = @segments.select do |s|
+          s.source == topic &&
+          s.interval.first <= slot.time &&
+          s.interval.last >= slot.time + 1.hour
         end
 
+        segment = segments.first
+
+        rebuild = false
         segment.metadata['columns'].each do |name, column|
           next if column['type'] == 'STRING' # dimension column
 
@@ -139,12 +165,8 @@ module Dumbo
           end
         end
 
-        if rebuild
-          source = @sources[topic]
-          source['dataSource'] = topic
-          @tasks << Task::Index.new(topic, [slot.time, slot.time+1.hour], source, "hour", "minute")
-          next
-        end
+        next unless rebuild
+        @tasks << Task::Index.new(topic, [slot.time, slot.time+1.hour], source, "hour", "minute")
       end
     end
 
