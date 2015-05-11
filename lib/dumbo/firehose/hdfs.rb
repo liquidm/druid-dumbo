@@ -18,16 +18,19 @@ module Dumbo
           end
         end
         raise "no namenode is up and running" unless @hdfs
+        @slots = {}
       end
 
       def slots(topic, interval)
+        @slots["#{topic}_#{interval}"] ||= slots!(topic, interval)
+      end
+
+      def slots!(topic, interval)
         interval = interval.map { |t| t.floor(1.hour).utc }
         $log.info("scanning HDFS for", interval: interval)
         interval = (interval.first.to_i..interval.last.to_i)
         interval.step(1.hour).map do |time|
-          Slot.new(@hdfs, topic, Time.at(time).utc).tap do |slot|
-            #$log.debug("found slot at", time: slot.time, files: slot.paths.length, events: slot.events)
-          end
+          Slot.new(@hdfs, topic, Time.at(time).utc)
         end.reject do |slot|
           slot.events.to_i < 1
         end

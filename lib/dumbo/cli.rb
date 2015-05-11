@@ -183,7 +183,7 @@ module Dumbo
       end.group_by do |segment|
         segment.interval.map(&:iso8601).join('/')
       end.each do |interval, segments|
-        if segments.first.shardSpec['type'] == 'linear'
+        if %w(linear hashed).include?(segments.first.shardSpec['type'])
           $log.info("merging segments", for: interval, segments: segments.length)
           @tasks << Task::Index.new(topic, segments.first.interval, source, "hour", "minute")
         end
