@@ -21,8 +21,8 @@ module Dumbo
                 parseSpec: {
                   format: "json",
                   timestampSpec: {
-                    column: ((@source['timestamp'] || {})['column'] || "ts"),
-                    format: ((@source['timestamp'] || {})['format'] || "iso"),
+                    column: ((@source['timestamp'] || {})['column'] || "timestamp"),
+                    format: ((@source['timestamp'] || {})['format'] || "ruby"),
                   },
                   dimensionsSpec: {
                     dimensions: (@source['dimensions'] || []),

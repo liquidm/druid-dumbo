@@ -21,12 +21,6 @@ CLI.for(Dumbo::CLI) do
     :default => 3,
     :proc => Proc.new { |x| x.to_i }
 
-  option :topics,
-    :short => '-t LIST',
-    :long => '--topics LIST',
-    :description => 'Topics to process (comma seperated)',
-    :proc => Proc.new { |x| x.split(',') }
-
   option :namenodes,
     :short => '-n LIST',
     :long => '--namenodes LIST',
@@ -39,6 +33,11 @@ CLI.for(Dumbo::CLI) do
     :long => '--zookeeper URI',
     :description => 'zookeeper URI',
     :default => 'localhost:2181/druid'
+
+  option :zookeeper_path,
+    :long => '--zookeeper-path PATH',
+    :description => "druid's discovery path within zookeeper",
+    :default => "/discovery"
 
   option :overlord,
     :short => '-o URI',

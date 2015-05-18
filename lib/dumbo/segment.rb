@@ -30,11 +30,7 @@ module Dumbo
       @druid = druid
     end
 
-    def events
-      @events ||= events!
-    end
-
-    def events!(interval = nil)
+    def events!(broker, interval = nil)
       interval ||= @interval
       query = Druid::Query::Builder.new
         .timeseries
@@ -44,17 +40,17 @@ module Dumbo
 
       ds = nil
       while ds.nil?
-        ds = @druid.data_source("broker/#{@source}")
+        ds = @druid.data_source("#{broker}/#{@source}")
       end
 
       ds.post(query).first['result']['events'] rescue 0
     end
 
-    def metadata
-      @metadata ||= metadata!
+    def metadata(broker)
+      @metadata ||= metadata!(broker)
     end
 
-    def metadata!(interval = nil)
+    def metadata!(broker, interval = nil)
       interval ||= @interval
       query = Druid::Query::Builder.new
         .metadata
@@ -62,7 +58,7 @@ module Dumbo
 
       ds = nil
       while ds.nil?
-        ds = @druid.data_source("broker/#{@source}")
+        ds = @druid.data_source("#{broker}/#{@source}")
       end
 
       ds.post(query).first

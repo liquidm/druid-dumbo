@@ -10,13 +10,12 @@ require 'dumbo/task/merge'
 module Dumbo
   class CLI
     def initialize
-      @topics = opts[:topics]
-      raise "no topics given" if @topics.empty?
       $log.info("scan", window: opts[:window])
       @db = Mysql2::Client.new(MultiJson.load(File.read(opts[:database])))
-      @hdfs = Firehose::HDFS.new(opts[:namenodes])
-      @druid = Druid::Client.new(opts[:zookeeper])
+      @druid = Druid::Client.new(opts[:zookeeper], { :discovery_path  => opts[:zookeeper_path]})
       @sources = MultiJson.load(File.read(opts[:sources]))
+      @topics = @sources.keys
+      @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
       @interval = [(Time.now.utc-(opts[:window] + opts[:offset]).hours).floor(1.day), Time.now.utc-opts[:offset].hour]
       @tasks = []
     end
@@ -77,9 +76,18 @@ module Dumbo
       end
     end
 
-    def validate_events(topic)
-      $log.info("validating events for", topic: topic)
-      @hdfs.slots(topic, @interval).each do |slot|
+    def validate_events(source_name)
+      $log.info("validating events for", source: source_name)
+
+      broker = source_name.split("/")[0]
+      topic = source_name.split("/")[-1]
+      source = @sources[source_name]
+      source['dataSource'] = topic
+
+      expectedMetrics = Set.new(source['metrics'].keys).add("events")
+      expectedDimensions = Set.new(source['dimensions'])
+
+      @hdfs.slots(source_name, @interval).each do |slot|
         next if slot.paths.length < 1 || slot.events < 1
 
         segments = @segments.select do |s|
@@ -89,16 +97,11 @@ module Dumbo
         end
 
         segment = segments.first
-        segment_events = segment.events!([slot.time, slot.time+1.hour]) if segment
+        segment_events = segment.events!(broker, [slot.time, slot.time+1.hour]) if segment
         rebuild = false
 
-        source = @sources[topic]
-
-        source['metrics'] = Set.new(source['aggregators'].keys).add("events")
-        metrics = Set.new(segments.map(&:metrics).flatten)
-
-        source['dimensions'] = Set.new(source['dimensions'])
-        dimensions = Set.new(segments.map(&:dimensions))
+        currentMetrics = Set.new(segments.map(&:metrics).flatten)
+        currentDimensions = Set.new(segments.map(&:dimensions))
 
         if !segment
           $log.info("found missing segment for", slot: slot.time)
@@ -106,17 +109,17 @@ module Dumbo
         elsif segment_events != slot.events
           $log.info("event mismatch", for: slot.time, delta: slot.events - segment_events, hdfs: slot.events, segment: segment_events)
           rebuild = true
-        elsif metrics < source['metrics']
-          $log.info("found new metrics", for: slot.time, delta: (source['metrics'] - metrics).to_a)
+        elsif currentMetrics < expectedMetrics
+          $log.info("found new metrics", for: slot.time, delta: (expectedMetrics - currentMetrics).to_a)
           rebuild = true
-        elsif metrics > source['metrics']
-          $log.info("found deleted metrics", for: slot.time, delta: (metrics - source['metrics']).to_a)
+        elsif currentMetrics > expectedMetrics
+          $log.info("found deleted metrics", for: slot.time, delta: (currentMetrics - expectedMetrics).to_a)
           rebuild = true
-        elsif dimensions < source['dimensions']
-          $log.info("found new dimensions", for: slot.time, delta: (source['dimensions'] - dimensions).to_a)
+        elsif currentDimensions < expectedDimensions
+          $log.info("found new dimensions", for: slot.time, delta: (expectedDimensions - currentDimensions).to_a)
           rebuild = true
-        elsif dimensions > source['dimensions']
-          $log.info("found deleted dimensions", for: slot.time, delta: (dimensions - source['dimensions']).to_a)
+        elsif currentDimensions > expectedDimensions
+          $log.info("found deleted dimensions", for: slot.time, delta: (currentDimensions - expectedDimensions).to_a)
           rebuild = true
         end
 
@@ -125,13 +128,16 @@ module Dumbo
       end
     end
 
-    def validate_schema(topic)
-      $log.info("validating schema for", topic: topic)
-      @hdfs.slots(topic, @interval).each do |slot|
-        next if slot.paths.length < 1 || slot.events < 1
+    def validate_schema(source_name)
+      $log.info("validating schema for", source: source_name)
 
-        source = @sources[topic]
-        source['dataSource'] = topic
+      broker = source_name.split("/")[0]
+      topic = source_name.split("/")[-1]
+      source = @sources[source_name]
+      source['dataSource'] = topic
+
+      @hdfs.slots(source_name, @interval).each do |slot|
+        next if slot.paths.length < 1 || slot.events < 1
 
         segments = @segments.select do |s|
           s.source == topic &&
@@ -142,14 +148,14 @@ module Dumbo
         segment = segments.first
 
         rebuild = false
-        segment.metadata['columns'].each do |name, column|
+        segment.metadata(broker)['columns'].each do |name, column|
           next if column['type'] == 'STRING' # dimension column
 
           case name
           when '__time', 'events'
             type = 'LONG'
           else
-            case source['aggregators'][name]
+            case source['metrics'][name]
             when 'doubleSum'
               type = 'FLOAT'
             when 'longSum'
@@ -218,9 +224,6 @@ module Dumbo
           rebuild = true
         elsif segment_events != events
           $log.info("mismatch", for: day, delta: events - segment_events, hdfs: events, segment: segment_events)
-          slots.each do |slot|
-            puts "#{slot.time}: #{slot.paths.inspect}"
-          end
           rebuild = true
         end
 

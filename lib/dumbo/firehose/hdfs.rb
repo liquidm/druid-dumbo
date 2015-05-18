@@ -4,8 +4,7 @@ require 'dumbo/time_ext'
 module Dumbo
   class Firehose
     class HDFS
-
-      def initialize(namenodes)
+      def initialize(namenodes, sources)
         [namenodes].flatten.each do |host|
           begin
             $log.info("connecting to", namenode: host)
@@ -19,6 +18,7 @@ module Dumbo
         end
         raise "no namenode is up and running" unless @hdfs
         @slots = {}
+        @sources = sources
       end
 
       def slots(topic, interval)
@@ -30,36 +30,17 @@ module Dumbo
         $log.info("scanning HDFS for", interval: interval)
         interval = (interval.first.to_i..interval.last.to_i)
         interval.step(1.hour).map do |time|
-          Slot.new(@hdfs, topic, Time.at(time).utc)
+          Slot.new(@sources, @hdfs, topic, Time.at(time).utc)
         end.reject do |slot|
           slot.events.to_i < 1
         end
       end
 
-      module Helper
-        def topics
-          @topics ||= clusters.map do |cluster|
-            @hdfs.list("/history/#{cluster}").map do |entry|
-              entry['pathSuffix'] if entry['type'] == 'DIRECTORY'
-            end
-          end.flatten.compact.sort.uniq
-        end
-
-        def clusters
-          @clusters ||= @hdfs.list('/history').map do |entry|
-            entry['pathSuffix'] if entry['type'] == 'DIRECTORY'
-          end.flatten.compact.sort.uniq
-        end
-      end
-
-      include Helper
-
       class Slot
-        include Helper
-
         attr_reader :topic, :time, :paths, :events
 
-        def initialize(hdfs, topic, time)
+        def initialize(sources, hdfs, topic, time)
+          @sources = sources
           @hdfs = hdfs
           @topic = topic
           @time = time
@@ -70,13 +51,14 @@ module Dumbo
         end
 
         def paths!
-          clusters.map do |cluster|
+          @sources[@topic]['seed']['camus'].map do |hdfs_root|
             begin
-              path = "/history/#{cluster}/#{@topic}/hourly/#{@time.strftime("%Y/%m/%d/%H")}"
+              path = "#{hdfs_root}/hourly/#{@time.strftime("%Y/%m/%d/%H")}"
               @hdfs.list(path).map do |entry|
                 File.join(path, entry['pathSuffix']) if entry['pathSuffix'] =~ /\.gz$/
               end
-            rescue
+            rescue => e
+              $log.warn("Failed to scan #{hdfs_root}, ignoring")
               nil
             end
           end.flatten.compact
