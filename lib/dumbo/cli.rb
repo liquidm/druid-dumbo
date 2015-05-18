@@ -14,7 +14,7 @@ module Dumbo
       @db = Mysql2::Client.new(MultiJson.load(File.read(opts[:database])))
       @druid = Druid::Client.new(opts[:zookeeper], { :discovery_path  => opts[:zookeeper_path]})
       @sources = MultiJson.load(File.read(opts[:sources]))
-      @topics = @sources.keys
+      @topics = opts[:topics] || @sources.keys
       @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
       @interval = [(Time.now.utc-(opts[:window] + opts[:offset]).hours).floor(1.day), Time.now.utc-opts[:offset].hour]
       @tasks = []

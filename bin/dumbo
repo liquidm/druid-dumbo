@@ -21,6 +21,12 @@ CLI.for(Dumbo::CLI) do
     :default => 3,
     :proc => Proc.new { |x| x.to_i }
 
+  option :topics,
+    :short => '-t LIST',
+    :long => '--topics LIST',
+    :description => 'Topics to process (comma seperated), defaults to all in sources.json',
+    :proc => Proc.new { |x| x.split(',') }
+
   option :namenodes,
     :short => '-n LIST',
     :long => '--namenodes LIST',
