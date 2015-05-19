@@ -35,6 +35,10 @@ The repo contains examples for database.json and sources.json.
 * database.json content is passed straight into [MySql2](http://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/MysqlAdapter.html)
 * sources.json uses keys in the format "service/dataSource" as established in [ruby-druid](https://github.com/ruby-druid/ruby-druid), see [example](https://github.com/liquidm/druid-dumbo/blob/master/sources.json.example#L27)
 
+## About unsharding
+
+Druid does auto-merging of segments, however they must not be shared. That's why dumbo supports ```-m unshard``` to merge sharded segments together.
+
 ## Contributing
 
 1. [Fork it](https://github.com/liquidm/druid-dumbo/fork)
