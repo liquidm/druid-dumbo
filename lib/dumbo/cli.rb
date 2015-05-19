@@ -25,23 +25,31 @@ module Dumbo
     end
 
     def run
-      if opts[:modes].include?("verify")
+      case opts[:mode]
+      when "verify"
         $log.info("validating events from HDFS")
         @segments = Dumbo::Segment.all(@db, @druid)
         @topics.each do |topic|
           validate_events(topic)
         end
         run_tasks
-      end
-
-      if opts[:modes].include?("unshard")
+      when "compact"
+        $log.info("Compacting segments")
+        @segments = Dumbo::Segment.all(@db, @druid)
+        @topics.each do |topic|
+          compact_segments(topic)
+        end
+      when "unshard"
         $log.info("merging segment shards")
         @segments = Dumbo::Segment.all(@db, @druid)
         @topics.each do |topic|
           unshard_segments(topic)
         end
         run_tasks
+      else
+        $log.error("Unknown mode #{opts[:mode]}, try -h")
       end
+
     end
 
     def run_tasks
@@ -136,6 +144,63 @@ module Dumbo
       end
     end
 
+    def compact_segments(topic)
+      compact_interval = [@interval[0].utc, @interval[-1].floor(1.day).utc]
+      compact_interval[0] -= 1.day if compact_interval[0] == compact_interval[-1]
+      $log.info("compacting segments for", topic: topic, interval: compact_interval)
+
+      source = @sources[topic]
+      dataSource = source['dataSource']
+      compact_range = (compact_interval[0]...compact_interval[-1])
+      expectedMetrics = Set.new(source['metrics'].keys).add("events")
+      expectedDimensions = Set.new(source['dimensions'])
+
+      segments = @segments.select do |segment|
+        segment.source == dataSource &&
+        (segment.interval[0]...segment.interval[-1]).overlaps?(compact_range)
+      end
+
+      segment_size = case (source['output']['segmentGranularity'] || "day").downcase
+      when 'fifteen_minute'
+        15.minutes
+      when 'thirty_minute'
+        30.minutes
+      when 'hour'
+        1.hour
+      when 'day'
+        1.day
+      else
+        raise "Unsupported segmentGranularity #{source['output']['segmentGranularity']}"
+      end
+
+      compact_interval[0].to_i.step(compact_interval[-1].to_i - 1, segment_size) do |start_time|
+        segment_range = (Time.at(start_time).utc...Time.at(start_time + segment_size).utc)
+        segment_interval = [segment_range.first, segment_range.last]
+
+        is_correct_schema = nil
+
+        is_compact = segments.all? do |segment|
+          if (segment.interval[0]...segment.interval[-1]).overlaps?(segment_range)
+            if is_correct_schema == nil
+              currentMetrics = Set.new(segment.metrics)
+              currentDimensions = Set.new(segment.dimensions)
+
+              is_correct_schema = (currentMetrics == expectedMetrics) && (currentDimensions == expectedDimensions)
+            end
+            segment.interval.first == segment_range.first &&
+            segment.interval.last == segment_range.last
+          else
+            true
+          end
+        end
+
+        next if is_compact && is_correct_schema
+        $log.info("Compact", topic: topic, interval: segment_interval, compact: is_compact, correct_schema: is_correct_schema)
+        @tasks << Task::Index.new(source, segment_interval)
+      end
+
+    end
+
     def unshard_segments(topic)
       $log.info("merging segments for", topic: topic)
 
@@ -153,6 +218,23 @@ module Dumbo
           $log.info("merging segments", for: interval, segments: segments.length)
           @tasks << Task::Index.new(source, segments.first.interval)
         end
+      end
+    end
+
+    def granularity(g)
+      case g.downcase
+      when 'minute'
+        1.minutes
+      when 'fifteen_minute'
+        15.minutes
+      when 'thirty_minute'
+        30.minutes
+      when 'hour'
+        1.hour
+      when 'day'
+        1.day
+      else
+        raise "Unsupported granularity #{g}"
       end
     end
 

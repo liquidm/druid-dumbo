@@ -7,14 +7,13 @@
 ## Usage
 
 ```
-$ bin/dumbo
-You must supply -s PATH!
+$ bin/dumbo -h
 Usage: bin/dumbo (options)
     -d, --database PATH              path to database config, defaults to "database.json"
     -D, --debug                      Enable debug output
     -N, --dryrun                     do not submit tasks to overlord (dry-run)
     -e, --environment ENVIRONMENT    Set the daemon environment
-    -m, --modes MODES                modes/operations to perform (verify, unshard)
+    -m, --mode MODE                  mode to perform (verify, compact, unshard)
         --name NAME                  Process name
     -n, --namenodes LIST             HDFS namenodes (comma seperated), defaults to "localhost"
         --offset HOURS               offset from now used as interval end, defaults to 3 hours
@@ -32,12 +31,20 @@ The repo contains examples for database.json and sources.json.
 ## Assumption / Notes
 
 * HDFS contains data in gzip'd files in [camus](https://github.com/liquidm/camus)-style [folders](https://github.com/liquidm/druid-dumbo/blob/master/lib/dumbo/firehose/hdfs.rb#L65)
-* database.json content is passed straight into [MySql2](http://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/MysqlAdapter.html)
-* sources.json uses keys in the format "service/dataSource" as established in [ruby-druid](https://github.com/ruby-druid/ruby-druid), see [example](https://github.com/liquidm/druid-dumbo/blob/master/sources.json.example#L27)
+* [database.json](https://github.com/liquidm/druid-dumbo/blob/master/database.json.example) content is passed straight into [MySql2](http://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/MysqlAdapter.html)
+* [sources.json](https://github.com/liquidm/druid-dumbo/blob/master/sources.json.example) uses keys in the format "service/dataSource" as established in [ruby-druid](https://github.com/ruby-druid/ruby-druid)
+
+## About verify
+
+Verify uses camus counters in HDFS to compare the total number of events in HDFS vs. in druid. To do this, there is a hard coded aggregation count named "events". If the count mismatches or the schema, an ingestHadoop task is spawned.
+
+## About compacting
+
+Compacting verifies segmentGranularity and schema. If a mismatch is detected, an ingestSegment task is spawned.
 
 ## About unsharding
 
-Druid does auto-merging of segments, however they must not be shared. That's why dumbo supports ```-m unshard``` to merge sharded segments together.
+Druid does auto-merging of segments, however they must not be shared. That's why dumbo supports ```-m unshard``` to merge sharded segments together, i.e. it will spawn an ingestSegment job with sharding disabled.
 
 ## Contributing
 

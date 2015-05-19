@@ -69,12 +69,11 @@ CLI.for(Dumbo::CLI) do
     :description => 'path to sources config',
     :required => true
 
-  option :modes,
-    :short => '-m MODES',
-    :long => '--modes MODES',
-    :description => 'modes/operations to perform (verify, unshard)',
-    :default => [],
-    :proc => Proc.new { |x| x.split(',') }
+  option :mode,
+    :short => '-m MODE',
+    :long => '--mode MODE',
+    :description => 'mode to perform (verify, compact, unshard)',
+    :default => "verify"
 
   option :dryrun,
     :short => '-N',
