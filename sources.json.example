@@ -1,18 +1,19 @@
 {
   "service/druid-metrics": {
-    "seed": {
+    "input": {
+      "timestamp": {
+        "column": "timestamp",
+        "format": "iso"
+      },
       "camus": [
         "/hdfs/location1",
         "/hdfs/location2"
       ]
     },
-    "segment_output": {
-      "index_granularity": "minute",
-      "num_shards": 1
-    },
-    "timestamp": {
-      "column": "timestamp",
-      "format": "iso"
+    "output": {
+      "segmentGranularity": "minute",
+      "indexGranularity": "minute",
+      "numShards": 1
     },
     "metrics": {
       "value": "doubleSum"

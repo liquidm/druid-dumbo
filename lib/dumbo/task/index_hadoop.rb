@@ -3,26 +3,24 @@ require 'dumbo/task/base'
 module Dumbo
   module Task
     class IndexHadoop < Base
-      def initialize(topic, interval, source, paths)
-        @topic = topic
-        @interval = interval
+      def initialize(source, interval, paths)
         @source = source
+        @interval = interval
         @paths = paths
       end
 
       def as_json(options = {})
-        interval = "#{@interval.first.iso8601}/#{@interval.last.iso8601}"
-        {
+        config = {
           type: 'index_hadoop',
           spec: {
             dataSchema: {
-              dataSource: @topic,
+              dataSource: @source['dataSource'],
               parser: {
                 parseSpec: {
                   format: "json",
                   timestampSpec: {
-                    column: ((@source['timestamp'] || {})['column'] || "timestamp"),
-                    format: ((@source['timestamp'] || {})['format'] || "ruby"),
+                    column: ((@source['input']['timestamp'] || {})['column'] || "timestamp"),
+                    format: ((@source['input']['timestamp'] || {})['format'] || "ruby"),
                   },
                   dimensionsSpec: {
                     dimensions: (@source['dimensions'] || []),
@@ -30,13 +28,13 @@ module Dumbo
                   }
                 }
               },
-              metricsSpec: (@source['aggregators'] || {}).map do |name, aggregator|
+              metricsSpec: (@source['metrics'] || {}).map do |name, aggregator|
                 { type: aggregator, name: name, fieldName: name }
               end + [{ type: "count", name: "events" }],
               granularitySpec: {
-                segmentGranularity: "hour",
-                queryGranularity: "minute",
-                intervals: [interval],
+                segmentGranularity: @source['output']['segmentGranularity'] || "hour",
+                queryGranularity: @source['output']['queryGranularity'] || "minute",
+                intervals: ["#{@interval.first.iso8601}/#{@interval.last.iso8601}"],
               }
             },
             ioConfig: {
@@ -55,6 +53,13 @@ module Dumbo
             },
           },
         }
+        if (@source['output']['numShards'] || 0) > 1
+          config[:spec][:tuningConfig][:partitionsSpec] = {
+            type: "hashed",
+            numShards: @source['output']['numShards'],
+          }
+        end
+        config
       end
     end
   end

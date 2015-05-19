@@ -53,6 +53,10 @@ module Dumbo
         MultiJson.dump(self.as_json)
       end
 
+      def inspect
+        "#{self.class.to_s}\n#{self.to_json}"
+      end
+
       def output
         "#{self.class.to_s.demodulize.underscore}-#{@topic}-#{@interval.first.iso8601}.json"
       end

@@ -50,18 +50,32 @@ module Dumbo
           end.reduce(:+)
         end
 
+        def patterns
+          @paths.map do |path|
+            tokens = path.split('/')
+            suffix = tokens[-1].split('.')
+            tokens[-1] = "*.#{suffix[-1]}"
+            tokens.join('/')
+          end.compact.uniq.sort
+        end
+
         def paths!
-          @sources[@topic]['seed']['camus'].map do |hdfs_root|
-            begin
+          begin
+            @sources[@topic]['input']['camus'].map do |hdfs_root|
               path = "#{hdfs_root}/hourly/#{@time.strftime("%Y/%m/%d/%H")}"
-              @hdfs.list(path).map do |entry|
-                File.join(path, entry['pathSuffix']) if entry['pathSuffix'] =~ /\.gz$/
+              begin
+                @hdfs.list(path).map do |entry|
+                  File.join(path, entry['pathSuffix']) if entry['pathSuffix'] =~ /\.gz$/
+                end
+              rescue => e
+                $log.warn("No events in #{path}, ignoring")
+                nil
               end
-            rescue => e
-              $log.warn("Failed to scan #{hdfs_root}, ignoring")
-              nil
-            end
-          end.flatten.compact
+            end.flatten.compact
+          rescue
+            $log.error("#{@topic} -> input.camus must be an array of HDFS paths")
+            exit 1
+          end
         end
       end
     end

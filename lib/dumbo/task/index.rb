@@ -3,12 +3,9 @@ require 'dumbo/task/base'
 module Dumbo
   module Task
     class Index < Base
-      def initialize(topic, interval, source, segmentGranularity = "hour", queryGranularity = "minute")
-        @topic = topic
-        @interval = interval
+      def initialize(source, interval)
         @source = source
-        @segmentGranularity = segmentGranularity
-        @queryGranularity = queryGranularity
+        @interval = interval
       end
 
       def as_json(options = {})
@@ -17,13 +14,14 @@ module Dumbo
           type: 'index',
           spec: {
             dataSchema: {
-              dataSource: @topic,
-              metricsSpec: (@source['aggregators'] || {}).map do |name, aggregator|
+              dataSource: @source['dataSource'],
+              metricsSpec: (@source['metrics'] || {}).map do |name, aggregator|
                 { type: aggregator, name: name, fieldName: name }
-              end + [{ type: "longSum", name: "events", fieldName: "events" }],
+              # WARNING: do NOT use count for events, will count in segment vs count in raw input
+              end + [{ type: "doubleSum", name: "events", fieldName: "events" }],
               granularitySpec: {
-                segmentGranularity: @segmentGranularity,
-                queryGranularity: @queryGranularity,
+                segmentGranularity: @source['output']['segmentGranularity'] || "hour",
+                queryGranularity: @source['output']['queryGranularity'] || "minute",
                 intervals: [interval],
               }
             },

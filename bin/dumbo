@@ -10,14 +10,14 @@ CLI.for(Dumbo::CLI) do
   option :window,
     :short => '-w HOURS',
     :long => '--window HOURS',
-    :description => 'scan window in hours',
-    :default => 3,
+    :description => 'scan window in hours, defaults to 24 hours',
+    :default => 24,
     :proc => Proc.new { |x| x.to_i }
 
   option :offset,
     :short => '-o HOURS',
     :long => '--offset HOURS',
-    :description => 'offset from now used as interval end',
+    :description => 'offset from now used as interval end, defaults to 3 hours',
     :default => 3,
     :proc => Proc.new { |x| x.to_i }
 
@@ -30,43 +30,49 @@ CLI.for(Dumbo::CLI) do
   option :namenodes,
     :short => '-n LIST',
     :long => '--namenodes LIST',
-    :description => 'HDFS namenodes (comma seperated)',
+    :description => 'HDFS namenodes (comma seperated), defaults to "localhost"',
     :default => %w(localhost),
     :proc => Proc.new { |x| x.split(',') }
 
   option :zookeeper,
     :short => '-z URI',
     :long => '--zookeeper URI',
-    :description => 'zookeeper URI',
+    :description => 'zookeeper URI, defaults to "localhost:2181/druid"',
     :default => 'localhost:2181/druid'
 
   option :zookeeper_path,
     :long => '--zookeeper-path PATH',
-    :description => "druid's discovery path within zookeeper",
+    :description => 'druid\'s discovery path within zookeeper, defaults to "/discovery"',
     :default => "/discovery"
 
   option :overlord,
-    :short => '-o URI',
-    :long => '--overlord URI',
-    :description => 'overlord URI',
-    :default => 'http://localhost:8090/druid/indexer/v1/task'
+    :short => '-o HOST[:PORT]',
+    :long => '--overlord HOST[:PORT]',
+    :description => 'overlord hostname and port, defaults to "localhost:8090"',
+    :default => 'localhost:8090',
+    :proc => Proc.new { |x|
+      tokens = x.split(":")
+      tokens[0] = "localhost" if tokens[0] == nil || tokens[0] == ""
+      tokens[1] = (tokens[1] || "8090").to_i
+      "#{tokens[0]}:#{tokens[1]}"
+    }
 
   option :database,
     :short => '-d PATH',
     :long => '--database PATH',
-    :description => 'path to database config',
+    :description => 'path to database config, defaults to "database.json"',
     :default => 'database.json'
 
   option :sources,
     :short => '-s PATH',
     :long => '--sources PATH',
     :description => 'path to sources config',
-    :default => 'sources.json'
+    :required => true
 
   option :modes,
     :short => '-m MODES',
     :long => '--modes MODES',
-    :description => 'modes/operations to perform (verify, unshard, daily)',
+    :description => 'modes/operations to perform (verify, unshard)',
     :default => [],
     :proc => Proc.new { |x| x.split(',') }
 
