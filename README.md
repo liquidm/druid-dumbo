@@ -6,11 +6,38 @@
 
 ## Usage
 
-TODO: Write usage instructions here
+```
+$ bin/dumbo
+You must supply -s PATH!
+Usage: bin/dumbo (options)
+    -d, --database PATH              path to database config, defaults to "database.json"
+    -D, --debug                      Enable debug output
+    -N, --dryrun                     do not submit tasks to overlord (dry-run)
+    -e, --environment ENVIRONMENT    Set the daemon environment
+    -m, --modes MODES                modes/operations to perform (verify, unshard)
+        --name NAME                  Process name
+    -n, --namenodes LIST             HDFS namenodes (comma seperated), defaults to "localhost"
+        --offset HOURS               offset from now used as interval end, defaults to 3 hours
+    -o, --overlord HOST[:PORT]       overlord hostname and port, defaults to "localhost:8090"
+    -s, --sources PATH               path to sources config (required)
+    -t, --topics LIST                Topics to process (comma seperated), defaults to all in sources.json
+    -w, --window HOURS               scan window in hours, defaults to 24 hours
+    -z, --zookeeper URI              zookeeper URI, defaults to "localhost:2181/druid"
+        --zookeeper-path PATH        druid's discovery path within zookeeper, defaults to "/discovery"
+    -h, --help                       Show this message
+```
+
+The repo contains examples for database.json and sources.json.
+
+## Assumption / Notes
+
+* HDFS contains data in gzip'd files in [camus](https://github.com/liquidm/camus)-style [folders](https://github.com/liquidm/druid-dumbo/blob/master/lib/dumbo/firehose/hdfs.rb#L65)
+* database.json content is passed straight into [MySql2](http://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/MysqlAdapter.html)
+* sources.json uses keys in the format "service/dataSource" as established in [ruby-druid](https://github.com/ruby-druid/ruby-druid), see [example](https://github.com/liquidm/druid-dumbo/blob/master/sources.json.example#L27)
 
 ## Contributing
 
-1. Fork it ( https://github.com/liquidm/druid-dumbo/fork )
+1. [Fork it](https://github.com/liquidm/druid-dumbo/fork)
 2. Create your feature branch (`git checkout -b my-new-feature`)
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)

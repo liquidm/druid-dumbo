@@ -1,0 +1,6 @@
+{
+  "host": "localhist",
+  "username": "druid",
+  "password": "diurd",
+  "database": "druid"
+}
