@@ -53,3 +53,7 @@ Druid does auto-merging of segments, however they must not be shared. That's why
 3. Commit your changes (`git commit -am 'Add some feature'`)
 4. Push to the branch (`git push origin my-new-feature`)
 5. Create a new Pull Request
+
+## Credit
+
+Based on [remerge/dumbo](https://github.com/remerge/dumbo) (which is a rewrite from scratch of druid-dumbo v1)
