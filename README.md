@@ -36,15 +36,17 @@ The repo contains examples for database.json and sources.json.
 
 ## About verify
 
-Verify uses camus counters in HDFS to compare the total number of events in HDFS vs. in druid. To do this, there is a hard coded aggregation count named "events". If the count mismatches or the schema, an ingestHadoop task is spawned.
+Verify uses camus counters in HDFS to compare the total number of events in HDFS vs. in druid. To do this, there is a hard coded aggregation count named "events". If the count mismatches or the schema, an [index hadoop](http://druid.io/docs/latest/Tasks.html#index-hadoop-task) task is spawned.
+
+If a ```source['input']['epoc']``` is set, verify will enforce the interval to not go beyond this point. This is useful, if you know you have incomplete HDFS data and want to keep the existing segments.
 
 ## About compacting
 
-Compacting verifies segmentGranularity and schema. If a mismatch is detected, an ingestSegment task is spawned.
+Compacting verifies segmentGranularity and schema. If a mismatch is detected, an [ingestSegment](http://druid.io/docs/latest/Firehose.html#ingestsegmentfirehose) task is spawned.
 
 ## About unsharding
 
-Druid does auto-merging of segments, however they must not be shared. That's why dumbo supports ```-m unshard``` to merge sharded segments together, i.e. it will spawn an ingestSegment job with sharding disabled.
+Druid does auto-merging of segments, however they must not be shared. That's why dumbo supports ```-m unshard``` to merge sharded segments together, i.e. it will spawn an [ingestSegment](http://druid.io/docs/latest/Firehose.html#ingestsegmentfirehose) task with sharding disabled.
 
 ## Contributing
 
