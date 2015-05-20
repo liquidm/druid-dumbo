@@ -56,6 +56,7 @@ module Dumbo
         if (@source['output']['numShards'] || 0) > 1
           config[:spec][:tuningConfig][:partitionsSpec] = {
             type: "hashed",
+            targetPartitionSize: -1,
             numShards: @source['output']['numShards'],
           }
         end

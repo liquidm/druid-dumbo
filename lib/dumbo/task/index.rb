@@ -10,7 +10,7 @@ module Dumbo
 
       def as_json(options = {})
         interval = "#{@interval.first.iso8601}/#{@interval.last.iso8601}"
-        {
+        config = {
           type: 'index',
           spec: {
             dataSchema: {
@@ -39,6 +39,10 @@ module Dumbo
             },
           },
         }
+        if (@source['output']['numShards'] || 0) > 1
+          config[:spec][:tuningConfig][:numShards] = @source['output']['numShards']
+        end
+        config
       end
     end
   end
