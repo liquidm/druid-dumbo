@@ -20,7 +20,7 @@ module Dumbo
       end
       @topics = opts[:topics] || @sources.keys
       @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
-      @interval = [(Time.now.utc-(opts[:window] + opts[:offset]).hours).floor(1.day), Time.now.utc-opts[:offset].hour]
+      @interval = [((Time.now.utc-(opts[:window] + opts[:offset]).hours).floor(1.day)).utc, (Time.now.utc-opts[:offset].hour).utc]
       @tasks = []
     end
 
@@ -77,6 +77,15 @@ module Dumbo
 
       expectedMetrics = Set.new(source['metrics'].keys).add("events")
       expectedDimensions = Set.new(source['dimensions'])
+
+      validation_interval = @interval
+      if source['input']['epoc']
+        epoc = Time.parse(source['input']['epoc'])
+        if epoc > validation_interval[0]
+          $log.info("Shortening interval due to epoc,", requested: validation_interval[0], epoc: epoc)
+          validation_interval[0] = epoc
+        end
+      end
 
       @hdfs.slots(source_name, @interval).each do |slot|
         next if slot.paths.length < 1 || slot.events < 1
