@@ -202,6 +202,8 @@ module Dumbo
             true
           end
         end
+        # ensure we don't try to compact non-existing data
+        is_correct_schema = true if is_correct_schema == nil
 
         next if is_compact && is_correct_schema
         $log.info("Compact", topic: topic, interval: segment_interval, compact: is_compact, correct_schema: is_correct_schema)
