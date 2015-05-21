@@ -16,12 +16,14 @@ module Dumbo
         end
 
         if response.code == '302'
-          $log.info("found redirect to active overlord: #{response.inspect}")
+          $log.info("found redirect to active overlord: #{response['Location']}")
           return run!(response['Location'])
         end
 
         if response.code != '200'
-          raise Error.new(response), "request failed"
+          puts uri
+          puts inspect
+          raise "request failed"
         end
 
         @overlord = overlord
@@ -39,7 +41,9 @@ module Dumbo
         end
 
         if response.code != '200'
-          raise Error.new(response), "request failed"
+          puts uri
+          puts inspect
+          raise "request failed"
         end
 
         MultiJson.load(response.body)["status"]["status"] != "RUNNING"
