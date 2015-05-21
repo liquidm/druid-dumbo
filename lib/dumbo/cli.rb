@@ -22,6 +22,7 @@ module Dumbo
       @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
       @interval = [((Time.now.utc-(opts[:window] + opts[:offset]).hours).floor(1.day)).utc, (Time.now.utc-opts[:offset].hour).utc]
       @tasks = []
+      @limit = opts[:limit]
     end
 
     def run
@@ -53,6 +54,11 @@ module Dumbo
     end
 
     def run_tasks
+      if @limit > 0 && @tasks.length > @limit
+        $log.info("Limiting task execution,", actually: @tasks.length, limit: @limit)
+        @tasks = @tasks[0,@limit]
+      end
+
       @tasks.each do |task|
         if opts[:dryrun]
           puts task.inspect

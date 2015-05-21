@@ -79,6 +79,13 @@ CLI.for(Dumbo::CLI) do
     :short => '-N',
     :long => '--dryrun',
     :description => 'do not submit tasks to overlord (dry-run)'
+
+  option :limit,
+    :short => '-l LIMIT',
+    :long => '--limit LIMIT',
+    :default => 0,
+    :description => 'limit the number of tasks to spawn (defaults to unlimited)',
+    :proc => Proc.new {|x| x.to_i }
 end.run
 
 # vim: et ts=2 sw=2

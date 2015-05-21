@@ -7,12 +7,14 @@
 ## Usage
 
 ```
-$ bin/dumbo -h
+$ bin/dumbo
+You must supply -s PATH!
 Usage: bin/dumbo (options)
     -d, --database PATH              path to database config, defaults to "database.json"
     -D, --debug                      Enable debug output
     -N, --dryrun                     do not submit tasks to overlord (dry-run)
     -e, --environment ENVIRONMENT    Set the daemon environment
+    -l, --limit LIMIT                limit the number of tasks to spawn (defaults to unlimited)
     -m, --mode MODE                  mode to perform (verify, compact, unshard)
         --name NAME                  Process name
     -n, --namenodes LIST             HDFS namenodes (comma seperated), defaults to "localhost"
