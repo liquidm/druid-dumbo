@@ -40,6 +40,7 @@ module Dumbo
           },
         }
         if (@source['output']['numShards'] || 0) > 1
+          config[:spec][:tuningConfig][:targetPartitionSize] = -1
           config[:spec][:tuningConfig][:numShards] = @source['output']['numShards']
         end
         config
