@@ -40,6 +40,7 @@ module Dumbo
         @topics.each do |topic|
           compact_segments(topic)
         end
+        run_tasks
       when "unshard"
         $log.info("merging segment shards")
         @segments = Dumbo::Segment.all(@db, @druid)
