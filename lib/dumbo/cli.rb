@@ -1,4 +1,5 @@
 require 'multi_json'
+require 'sequel'
 require 'druid'
 
 require 'dumbo/segment'
@@ -10,9 +11,8 @@ module Dumbo
   class CLI
     def initialize
       $log.info("scan", window: opts[:window])
-      @db = Mysql2::Client.new(MultiJson.load(File.read(opts[:database])))
+      @db = Sequel.connect(MultiJson.load(File.read(opts[:database])))
       @druid = Druid::Client.new(opts[:zookeeper], { :discovery_path  => opts[:zookeeper_path]})
-
       @sources = MultiJson.load(File.read(opts[:sources]))
       @sources.each do |source_name, source|
         source['service'] = source_name.split("/")[0]

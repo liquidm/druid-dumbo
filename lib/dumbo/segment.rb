@@ -1,4 +1,3 @@
-require 'mysql2'
 require 'multi_json'
 
 module Dumbo
@@ -8,12 +7,14 @@ module Dumbo
     end
 
     def self.all!(db, druid)
-      query = %Q{SELECT payload FROM druid_segments WHERE used = 1}
-      segments = db.query(query).map do |row|
-        new(MultiJson.load(row['payload']), druid)
+      segments = db[:druid_segments]
+      segments.where(used: true)
+      data = segments.map do |row|
+        new(MultiJson.load(row[:payload]), druid)
       end
-      $log.info("found #{segments.length} segments in metadata store")
-      return segments
+
+      $log.info("found #{data.length} segments in metadata store")
+      data
     end
 
     attr_reader :source, :interval, :version, :dimensions, :metrics, :loadSpec, :shardSpec
