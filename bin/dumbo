@@ -15,7 +15,7 @@ CLI.for(Dumbo::CLI) do
     :proc => Proc.new { |x| x.to_i }
 
   option :offset,
-    :short => '-o HOURS',
+    :short => '-f HOURS',
     :long => '--offset HOURS',
     :description => 'offset from now used as interval end, defaults to 3 hours',
     :default => 3,
