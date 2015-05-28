@@ -49,10 +49,12 @@ GEM
     multi_json (1.11.0)
     mysql2 (0.3.18)
     netrc (0.10.3)
+    pg (0.18.2)
     rest-client (1.8.0)
       http-cookie (>= 1.0.2, < 2.0)
       mime-types (>= 1.16, < 3.0)
       netrc (~> 0.7)
+    sequel (4.22.0)
     terminal-table (1.4.5)
     thread_safe (0.3.5)
     tzinfo (1.2.2)
@@ -72,5 +74,7 @@ PLATFORMS
 DEPENDENCIES
   liquid-ext
   mysql2
+  pg
   ruby-druid!
+  sequel
   webhdfs
