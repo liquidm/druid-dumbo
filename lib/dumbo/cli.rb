@@ -201,7 +201,17 @@ module Dumbo
               currentMetrics = Set.new(segment.metrics)
               currentDimensions = Set.new(segment.dimensions)
 
-              is_correct_schema = (currentMetrics == expectedMetrics) && (currentDimensions == expectedDimensions)
+              if currentMetrics < expectedMetrics
+                $log.info("requested metrics not in source segment, ignoring", metrics: (expectedMetrics - currentMetrics).to_a, for: segment_interval)
+              elsif currentMetrics > expectedMetrics
+                $log.info("requested to remove", metrics: (currentMetrics - expectedMetrics).to_a, for: segment_interval)
+                is_correct_schema = false
+              elsif currentDimensions < expectedDimensions
+                $log.info("requested dimensions not in source segment, ignoring", for: segment_interval, missing: (expectedDimensions - currentDimensions).to_a)
+              elsif currentDimensions > expectedDimensions
+                $log.info("requested to remove", dimensions: (currentDimensions - expectedDimensions).to_a, for: segment_interval)
+                is_correct_schema = false
+              end
             end
             segment.interval.first == segment_range.first &&
             segment.interval.last == segment_range.last
