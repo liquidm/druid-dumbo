@@ -7,14 +7,12 @@ module Dumbo
     end
 
     def self.all!(db, druid)
-      segments = db[:druid_segments]
-      segments.where(used: true)
-      data = segments.map do |row|
+      segments = db[:druid_segments].where(used: true).map do |row|
         new(MultiJson.load(row[:payload]), druid)
       end
 
-      $log.info("found #{data.length} segments in metadata store")
-      data
+      $log.info("found #{segments.length} segments in metadata store")
+      segments
     end
 
     attr_reader :source, :interval, :version, :dimensions, :metrics, :loadSpec, :shardSpec
