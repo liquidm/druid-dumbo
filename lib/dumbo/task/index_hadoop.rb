@@ -12,6 +12,7 @@ module Dumbo
       def as_json(options = {})
         config = {
           type: 'index_hadoop',
+          hadoopDependencyCoordinates: ['org.apache.hadoop:hadoop-client:2.4.1'],
           spec: {
             dataSchema: {
               dataSource: @source['dataSource'],
