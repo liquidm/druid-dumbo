@@ -86,6 +86,12 @@ CLI.for(Dumbo::CLI) do
     :default => 0,
     :description => 'limit the number of tasks to spawn (defaults to unlimited)',
     :proc => Proc.new {|x| x.to_i }
+
+  option :hadoop_version,
+    :short => "-v VERSION",
+    :long => "--hadoopDependencyCoordinates VERSION",
+    :default => "2.4.1",
+    :description => 'specifiy the hadoopDependencyCoordinates (defaults to 2.4.1)'
 end.run
 
 # vim: et ts=2 sw=2

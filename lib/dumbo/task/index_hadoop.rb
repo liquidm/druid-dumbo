@@ -3,16 +3,17 @@ require 'dumbo/task/base'
 module Dumbo
   module Task
     class IndexHadoop < Base
-      def initialize(source, interval, paths)
+      def initialize(source, interval, paths, hadoop_version)
         @source = source
         @interval = interval
         @paths = paths
+        @hadoop_version = hadoop_version
       end
 
       def as_json(options = {})
         config = {
           type: 'index_hadoop',
-          hadoopDependencyCoordinates: ['org.apache.hadoop:hadoop-client:2.4.1'],
+          hadoopDependencyCoordinates: ["org.apache.hadoop:hadoop-client:#{@hadoop_version}"],
           spec: {
             dataSchema: {
               dataSource: @source['dataSource'],
