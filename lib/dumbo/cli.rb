@@ -49,6 +49,12 @@ module Dumbo
           unshard_segments(topic)
         end
         run_tasks
+      when "synchronize"
+        $log.info("synchronizing hdfs")
+        @topics.each do |topic|
+          synchronize(topic)
+        end
+        run_tasks
       else
         $log.error("Unknown mode #{opts[:mode]}, try -h")
       end
@@ -259,6 +265,14 @@ module Dumbo
           $log.info("merging segments", for: interval, segments: segments.length)
           @tasks << Task::Index.new(source, segments.first.interval)
         end
+      end
+    end
+
+    def synchronize(source_name)
+      $log.info("synchronizing hdfs data for", source_name: source_name)
+
+      @hdfs.slots_options!(source_name, @interval).each do |slot_options|
+        slot_options.synchronize! opts[:dryrun]
       end
     end
 
