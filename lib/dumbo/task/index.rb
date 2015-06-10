@@ -35,12 +35,14 @@ module Dumbo
               },
             },
             tuningConfig: {
-              type: 'index',
-              rowFlushBoundary: 750000,
+              type: 'index'
             },
           },
         }
-        if (@source['output']['numShards'] || 0) > 1
+        if (@source['output']['targetPartitionSize'] || 0) > 0
+          config[:spec][:tuningConfig][:targetPartitionSize] = @source['output']['targetPartitionSize']
+          config[:spec][:tuningConfig][:numShards] = -1
+        elsif (@source['output']['numShards'] || 0) > 1
           config[:spec][:tuningConfig][:targetPartitionSize] = -1
           config[:spec][:tuningConfig][:numShards] = @source['output']['numShards']
         end

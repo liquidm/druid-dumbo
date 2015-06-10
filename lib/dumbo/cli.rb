@@ -236,6 +236,11 @@ module Dumbo
             should_compact = true
           end
 
+          if input_segment.interval.first > segment_interval.first && input_segment.interval.last < segment_interval.last
+            $log.info("detect too small segment size,", is: input_segment.interval, expected: segment_interval)
+            should_compact = true
+          end
+
           should_compact
         end
         @tasks << Task::Index.new(source, segment_interval) if must_compact
