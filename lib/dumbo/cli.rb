@@ -219,30 +219,41 @@ module Dumbo
 
         must_compact = segment_input[:segments].any? do |input_segment|
           should_compact = false
-          currentMetrics = Set.new(input_segment.metrics)
-          currentDimensions = Set.new(input_segment.dimensions)
 
-          if currentMetrics < expectedMetrics
-            $log.info("requested metrics not in source segment, ignoring", metrics: (expectedMetrics - currentMetrics).to_a, for: segment_interval)
-          elsif currentMetrics > expectedMetrics
-            $log.info("requested to remove", metrics: (currentMetrics - expectedMetrics).to_a, for: segment_interval)
-            should_compact = true
+          currentMetrics = Set.new(input_segment.metrics)
+          if currentMetrics != expectedMetrics
+            possibleMetrics = currentMetrics & expectedMetrics
+
+            if possibleMetrics < expectedMetrics && possibleMetrics != currentMetrics
+              $log.info("detected a possible metrics reduction")
+              should_compact = true
+            end
           end
 
-          if currentDimensions < expectedDimensions
-            $log.info("requested dimensions not in source segment, ignoring", for: segment_interval, missing: (expectedDimensions - currentDimensions).to_a)
-          elsif currentDimensions > expectedDimensions
-            $log.info("requested to remove", dimensions: (currentDimensions - expectedDimensions).to_a, for: segment_interval)
-            should_compact = true
+          currentDimensions = Set.new(input_segment.dimensions)
+          if currentDimensions != expectedDimensions
+            possibleDimensions = currentDimensions & expectedDimensions
+
+            if possibleDimensions < expectedDimensions && possibleDimensions != currentDimensions
+              $log.info("detected a possible dimensions reduction")
+              should_compact = true
+            end
           end
 
           if input_segment.interval.first > segment_interval.first && input_segment.interval.last < segment_interval.last
-            $log.info("detect too small segment size,", is: input_segment.interval, expected: segment_interval)
+            $log.info("detected too small segment size,", is: input_segment.interval, expected: segment_interval)
             should_compact = true
           end
 
           should_compact
         end
+
+        maxShards = (source['output'] && source['output']['maxShards']) || 0
+        if maxShards > 0 && maxShards > segment_input[:segments].length
+          $log.info("detected too many shards,", is: segment_input[:segments].length, max: maxShards)
+          must_compact = true
+        end
+
         @tasks << Task::Index.new(source, segment_interval) if must_compact
       end
     end
