@@ -35,7 +35,8 @@ module Dumbo
               },
             },
             tuningConfig: {
-              type: 'index'
+              type: 'index',
+              rowFlushboundary: 400000,
             },
           },
         }
