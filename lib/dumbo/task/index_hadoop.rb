@@ -3,10 +3,10 @@ require 'dumbo/task/base'
 module Dumbo
   module Task
     class IndexHadoop < Base
-      def initialize(source, interval, paths, hadoop_version)
+      def initialize(source, interval, path, hadoop_version)
         @source = source
         @interval = interval
-        @paths = paths
+        @path = path
         @hadoop_version = hadoop_version
       end
 
@@ -43,7 +43,7 @@ module Dumbo
               type: 'hadoop',
               inputSpec: {
                 type: 'static',
-                paths: @paths.join(','),
+                paths: @path,
               },
             },
             tuningConfig: {

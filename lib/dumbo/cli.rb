@@ -163,7 +163,7 @@ module Dumbo
         end
 
         next unless rebuild
-        @tasks << Task::IndexHadoop.new(source, [slot.time, slot.time+1.hour], slot.patterns, @hadoop_version)
+        @tasks << Task::IndexHadoop.new(source, [slot.time, slot.time+1.hour], slot.pattern, @hadoop_version)
       end
     end
 

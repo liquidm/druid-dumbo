@@ -6,6 +6,8 @@ require 'dumbo/time_ext'
 module Dumbo
   class Firehose
     class HDFS
+      LOCAL_TMP_DIR = '/tmp/druid-dumbo'
+
       def initialize(namenodes, sources)
         @hdfs = []
         [namenodes].flatten.each do |host|
@@ -90,40 +92,22 @@ module Dumbo
             $log.info("downloading best option", time: @time, from: best_slot.hdfs.host)
             WebHDFS::FileUtils.set_server(best_slot.hdfs.host, 50070) unless dryrun
 
-            paths = best_slot.paths
-            FileUtils.remove_entry_secure('/tmp/druid-dumbo')
-            FileUtils.mkdir '/tmp/druid-dumbo'
+            FileUtils.remove_entry_secure LOCAL_TMP_DIR
+            FileUtils.mkdir LOCAL_TMP_DIR
 
-            paths.each do |path|
-              file = path.split('/')[-1]
-              WebHDFS::FileUtils.copy_to_local(path, "/tmp/druid-dumbo/#{file}")
-            end
+            best_slot.download
           end
 
           @all.each do |option|
-            next if option == best_slot
-            next if option.events == best_slot.events
-
+            next if option == best_slot || option.events == best_slot.events
             $log.info("found differences between options", delta: (best_slot.events - option.events), best: best_slot.events, current: option.events)
-
-            unless dryrun
-              $log.info("|-- deleting data", at: option.hdfs.host)
-              option.paths.each do |path|
-                option.hdfs.delete(path)
-              end
-
-              $log.info("|-- uploading best option", to: option.hdfs.host)
-              folder = option.pattern.split('/')[0..-2].join('/')
-              WebHDFS::FileUtils.set_server(option.hdfs.host, 50070)
-
-              paths.each do |path|
-                file = path.split('/')[-1]
-                $log.info("|---- copying", file: file, folder: folder, from: best_slot.hdfs.host, to: option.hdfs.host)
-                WebHDFS::FileUtils.copy_from_local("/tmp/druid-dumbo/#{file}", "#{folder}/#{file}")
-              end
-
-              $log.info("|-- sync done", at: option.hdfs.host)
-            end
+            next if dryrun
+            
+            $log.info("|-- deleting data", at: option.hdfs.host)
+            option.destroy
+            $log.info("|-- synchronizing", file: file, folder: folder, from: best_slot.hdfs.host, to: option.hdfs.host)
+            option.upload best_option.paths.map { |p| p.split('/')[-1] }
+            $log.info("|-- sync done", at: option.hdfs.host)
           end
         end
       end
@@ -143,12 +127,11 @@ module Dumbo
         end
 
         def pattern
-          @paths.map do |path|
-            tokens = path.split('/')
-            suffix = tokens[-1].split('.')
-            tokens[-1] = "*.#{suffix[-1]}"
-            tokens.join('/')
-          end.compact.uniq.sort.first
+          path = @paths.first
+          tokens = path.split('/')
+          suffix = tokens[-1].split('.')
+          tokens[-1] = "*.#{suffix[-1]}"
+          tokens.join('/')
         end
 
         def paths!
@@ -167,6 +150,28 @@ module Dumbo
           rescue
             $log.error("#{@topic} -> input.camus must be an array of HDFS paths")
             exit 1
+          end
+        end
+
+        def download
+          @paths.each do |path|
+            file = path.split('/')[-1]
+            WebHDFS::FileUtils.copy_to_local(path, "#{LOCAL_TMP_DIR}/#{file}")
+          end
+        end
+
+        def destroy
+          @paths.each do |path|
+            @hdfs.delete(path)
+          end
+        end
+
+        def upload(files)
+          folder = pattern.split('/')[0..-2].join('/')
+          WebHDFS::FileUtils.set_server(@hdfs.host, 50070)
+
+          files.each do |file|
+            WebHDFS::FileUtils.copy_from_local("#{LOCAL_TMP_DIR}/#{file}", "#{folder}/#{file}")
           end
         end
       end
