@@ -73,6 +73,8 @@ module Dumbo
         end
 
         def synchronize!(dryrun = true)
+          $log.info("synchronizing slot options at", time: @time, topic: @topic)
+
           unless @hdfs_servers.size > 1
             $log.info("tried to sync but there are no enough hdfs servers")
             return
