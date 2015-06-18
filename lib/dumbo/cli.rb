@@ -137,7 +137,7 @@ module Dumbo
             when '__time'
               type = 'LONG'
             when 'events'
-              type = 'FLOAT'
+              type = 'LONG'
             else
               case source['metrics'][name]
               when 'doubleSum'
