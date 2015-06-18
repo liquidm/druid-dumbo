@@ -60,7 +60,19 @@ module Dumbo
         ds = @druid.data_source("#{broker}/#{@source}")
       end
 
-      ds.post(query).first
+      begin
+        ds.post(query).first
+      rescue => e
+        $log.warn("Druid failed with #{e}")
+        # so far only in verify, this return value will cause a reimport
+        {
+          'columns' => {
+            '__time': {
+              'type' => false
+            }
+          }
+        }
+      end
     end
 
     def as_json(options = {})
