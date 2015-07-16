@@ -1,0 +1,115 @@
+#!/usr/bin/env ruby
+
+ROOT = File.expand_path('../..', __FILE__)
+
+require 'bundler/setup'
+require 'liquid/boot'
+require 'sequel'
+require 'multi_json'
+require 'webhdfs'
+
+module Dumbo
+  class RemoveUnused
+    def initialize
+      @db = Sequel.connect(MultiJson.load(File.read(opts[:database])))
+      @namenodes = [opts[:namenodes]].flatten
+      @min_age = Time.now - opts[:offset].days
+    end
+
+    def hdfs
+      unless @hdfs
+        @namenodes.each do |host|
+          begin
+            $log.info('connecting to', namenode: host)
+            @hdfs = WebHDFS::Client.new(host, 50070)
+            @hdfs.list('/')
+            break
+          rescue
+            $log.info('failed to use', namenode: host)
+            @hdfs = nil
+          end
+        end
+      end
+      raise 'no namenode is up and running' unless @hdfs
+      @hdfs
+    end
+
+    def run
+      removed_segments = Hash.new(0)
+      unknown_storage_type = Hash.new(0)
+      ids_to_be_deleted = []
+
+      segments = @db[:druid_segments].where(used: false).each do |row|
+        created_date = Time.parse(row[:created_date])
+        next if created_date > @min_age
+
+        segment = MultiJson.load(row[:payload])
+        load_spec = segment['loadSpec']
+        type = load_spec['type']
+
+        case type
+        when "hdfs"
+          removed_segments[type] += 1
+          next if opts[:dryrun]
+          hdfs_location = File.expand_path('..', load_spec['path'])
+          $log.info("deleting", :hdfs => hdfs_location)
+          hdfs.delete(hdfs_location, :recursive => true)
+        else
+          if opts[:force]
+            removed_segments[type] += 1
+          else
+            unknown_storage_type[type] += 1
+            next
+          end
+          next if opts[:dryrun]
+        end
+
+        ids_to_be_deleted << row[:id]
+      end
+
+      removed_segments.each do |type, counter|
+        $log.info "removing #{counter} segment(s) of type #{type}"
+      end
+
+      unknown_storage_type.each do |type, counter|
+        $log.warn "unable to handle #{counter} segment(s) of type #{type}"
+      end
+
+      @db[:druid_segments].where('id in ?', ids_to_be_deleted).delete unless opts[:dryrun]
+    end
+  end
+end
+
+CLI.for(Dumbo::RemoveUnused) do
+  option :namenodes,
+    :short => '-n LIST',
+    :long => '--namenodes LIST',
+    :description => 'HDFS namenodes (comma seperated), defaults to "localhost"',
+    :default => %w(localhost),
+    :proc => Proc.new { |x| x.split(',') }
+
+  option :database,
+    :short => '-d PATH',
+    :long => '--database PATH',
+    :description => 'path to database config, defaults to "database.json"',
+    :default => 'database.json'
+
+  option :dryrun,
+    :short => '-N',
+    :long => '--dryrun',
+    :description => 'do not actually do anything (dry-run)',
+    :default => false
+
+  option :offset,
+    :short => '-o DAYS',
+    :long => '--offset DAYS',
+    :description => 'minimal age of segments before removing (defaults to 3 days)',
+    :default => 3,
+    :proc => Proc.new { |x| x.to_i }
+
+  option :force,
+    :short => '-f',
+    :long => '--force',
+    :description => 'remove database entry even if storage type is unknown',
+    :default => false
+end.run
