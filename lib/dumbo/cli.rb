@@ -144,6 +144,8 @@ module Dumbo
                 type = 'FLOAT'
               when 'longSum'
                 type = 'LONG'
+              when 'hyperUnique'
+                type = 'hyperUnique'
               else
                 type = 'unknown'
               end
