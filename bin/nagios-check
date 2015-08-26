@@ -1,0 +1,159 @@
+#!/usr/bin/env ruby
+
+ROOT = File.expand_path('../..', __FILE__)
+
+require 'bundler/setup'
+require 'liquid/boot'
+
+require 'mixlib/cli'
+require 'multi_json'
+require 'sequel'
+require 'druid'
+
+require 'dumbo/segment'
+require 'dumbo/firehose/hdfs'
+require 'dumbo/task/index'
+require 'dumbo/task/index_hadoop'
+
+$log.mute!
+
+module Dumbo
+  class NagiosCheck
+    include Mixlib::CLI
+
+    option :topics,
+      :short => '-t LIST',
+      :long => '--topics LIST',
+      :description => 'Topics to process (comma seperated), defaults to all in sources.json',
+      :proc => Proc.new { |x| x.split(',') }
+
+    option :metrics,
+      :short => '-m LIST',
+      :long => '--metrics LIST',
+      :description => 'list of metrics to sum up to compare to HDFS counter, defaults to "events"',
+      :default => %w(events),
+      :proc => Proc.new { |x| x.split(',') }
+
+    option :namenodes,
+      :short => '-n LIST',
+      :long => '--namenodes LIST',
+      :description => 'HDFS namenodes (comma seperated), defaults to "localhost"',
+      :default => %w(localhost),
+      :proc => Proc.new { |x| x.split(',') }
+
+    option :zookeeper,
+      :short => '-z URI',
+      :long => '--zookeeper URI',
+      :description => 'zookeeper URI, defaults to "localhost:2181/druid"',
+      :default => 'localhost:2181/druid'
+
+    option :zookeeper_path,
+      :long => '--zookeeper-path PATH',
+      :description => 'druid\'s discovery path within zookeeper, defaults to "/discovery"',
+      :default => "/discovery"
+
+    option :database,
+      :short => '-d PATH',
+      :long => '--database PATH',
+      :description => 'path to database config, defaults to "database.json"',
+      :default => 'database.json'
+
+    option :sources,
+      :short => '-s PATH',
+      :long => '--sources PATH',
+      :description => 'path to sources config',
+      :required => true
+
+    option :json,
+      :short => '-j',
+      :long => '--json',
+      :description => 'display json instead of human readable nagios info',
+      :boolean => true
+
+    option :help,
+      :short => "-h",
+      :long => "--help",
+      :description => "Show this message",
+      :on => :tail,
+      :boolean => true,
+      :show_options => true,
+      :exit => 0
+
+    alias :opts :config
+
+    def run
+      @db = Sequel.connect(MultiJson.load(File.read(opts[:database])))
+      @druid = Druid::Client.new(opts[:zookeeper], { :discovery_path  => opts[:zookeeper_path]})
+      @sources = MultiJson.load(File.read(opts[:sources]))
+      @sources.each do |source_name, source|
+        source['service'] = source_name.split("/")[0]
+        source['dataSource'] = source_name.split("/")[-1]
+      end
+      @topics = opts[:topics] || @sources.keys
+      @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
+      @interval = [(Time.now-3.day).floor(1.day).utc, Time.now.floor(3.hours).utc]
+      @segments = Dumbo::Segment.all(@db, @druid)
+      @topics.each do |topic|
+        validate_events(topic)
+      end
+    end
+
+    def validate_events(source_name)
+      source = @sources[source_name]
+
+      validation_interval = @interval
+      if source['input']['epoc']
+        epoc = Time.parse(source['input']['epoc'])
+        if epoc > validation_interval[0]
+          $log.info("Shortening interval due to epoc,", requested: validation_interval[0], epoc: epoc)
+          validation_interval[0] = epoc
+        end
+      end
+
+      query = Druid::Query::Builder.new
+        .timeseries
+        .long_sum(*opts[:metrics])
+        .granularity(:hour)
+        .interval(validation_interval.first, validation_interval.last)
+
+      slots = @hdfs.slots(source_name, validation_interval)
+
+      nagios_level = 0
+      nagios_display = []
+      @druid.data_source(source_name).post(query).each_with_index do |row, ii|
+        druid_counter = row['result'].values.inject(0) {|sum,val| sum + val}
+        hdfs_counter = slots[ii].events
+
+        delta = hdfs_counter - druid_counter
+        percentage = ((druid_counter.to_f / hdfs_counter) * 100).round(2)
+        delta_percentage = 100 - percentage.abs
+
+        if delta.abs > 0
+          nagios_display << {ts: row['timestamp'], delta: delta, percentage: percentage, dataSource: source_name}
+          if delta_percentage > 1
+            nagios_level = 2
+          elsif nagios_level == 0
+            nagios_level = 1
+          end
+        end
+      end
+      if opts[:json]
+        puts ({
+          updated_at: Time.now.utc,
+          check_interval: @interval,
+          nagios_level: nagios_level,
+          segments: nagios_display,
+        }).to_json
+        exit 0
+      else
+        puts "#{@interval.to_json} at #{Time.now.utc}"
+        puts nagios_display.to_yaml
+        exit nagios_level
+      end
+    end
+  end
+end
+
+nagios_check = Dumbo::NagiosCheck.new
+nagios_check.parse_options
+nagios_check.run
