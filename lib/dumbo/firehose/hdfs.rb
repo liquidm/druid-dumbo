@@ -68,7 +68,6 @@ module Dumbo
                   File.join(path, entry['pathSuffix']) if entry['pathSuffix'] =~ /\.gz$/
                 end
               rescue => e
-                $log.warn("No events in #{path}, ignoring")
                 nil
               end
             end.flatten.compact
