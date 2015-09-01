@@ -20,7 +20,7 @@ module Dumbo
       end
       @topics = opts[:topics] || @sources.keys
       @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
-      @interval = [((Time.now.utc-(opts[:window] + opts[:offset]).hours).floor(1.day)).utc, (Time.now.utc-opts[:offset].hour).floor(1.hour).utc]
+      @interval = [((Time.now.utc-(opts[:window] + opts[:offset]).hours).floor).utc, (Time.now.utc-opts[:offset].hour).floor(1.hour).utc]
       @tasks = []
       @limit = opts[:limit]
       @hadoop_version = opts[:hadoop_version]
@@ -90,24 +90,28 @@ module Dumbo
       if source['input']['epoc']
         epoc = Time.parse(source['input']['epoc'])
         if epoc > validation_interval[0]
-          $log.info("Shortening interval due to epoc,", requested: validation_interval[0], epoc: epoc)
+          $log.info("shortening interval due to epoc,", requested: validation_interval[0], epoc: epoc)
           validation_interval[0] = epoc
         end
       end
 
-      last_non_lagging_slot = validation_interval[0]
-      lag_check = [source['input']['required']].flatten.compact.uniq
-      @hdfs.slots(source_name, @interval).each_with_index do |slot, ii|
-        next if slot.events < 1
-        next unless lag_check.all? do |required_path|
-          slot.paths.any? {|existing_path| existing_path.start_with?(required_path) }
-        end
-        last_non_lagging_slot = slot.time - 1.hour
-      end
+      lag_check = [source['input']['camus']].flatten.compact.uniq
+      if lag_check.size > 0
+        last_non_lagging_slot = validation_interval[0]
 
-      if last_non_lagging_slot != validation_interval[1]
-        $log.info("Last non lagging slot is #{last_non_lagging_slot}")
-        validation_interval[1] = last_non_lagging_slot
+        $log.info("checking for lag on", paths: lag_check)
+        @hdfs.slots(source_name, @interval).each_with_index do |slot, ii|
+          next if slot.events < 1
+          next unless lag_check.all? do |required_path|
+            slot.paths.any? {|existing_path| existing_path.start_with?(required_path) }
+          end
+          last_non_lagging_slot = slot.time - 1.hour
+        end
+
+        if last_non_lagging_slot != validation_interval[1]
+          $log.info("last non lagging slot is #{last_non_lagging_slot}")
+          validation_interval[1] = last_non_lagging_slot
+        end
       end
 
       @hdfs.slots(source_name, validation_interval).each do |slot|

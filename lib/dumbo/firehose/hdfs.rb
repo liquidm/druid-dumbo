@@ -17,20 +17,20 @@ module Dumbo
           end
         end
         raise "no namenode is up and running" unless @hdfs
-        @slots = {}
+        @hdfs_cache = {}
         @sources = sources
       end
 
       def slots(topic, interval)
-        @slots["#{topic}_#{interval}"] ||= slots!(topic, interval)
+        slots!(topic, interval, @hdfs_cache)
       end
 
-      def slots!(topic, interval)
+      def slots!(topic, interval, cache = {})
         interval = interval.map { |t| t.floor(1.hour).utc }
         $log.info("scanning HDFS for", interval: interval)
         interval = (interval.first.to_i..interval.last.to_i)
         interval.step(1.hour).map do |time|
-          Slot.new(@sources, @hdfs, topic, Time.at(time).utc)
+          Slot.new(@sources, @hdfs, cache, topic, Time.at(time).utc)
         end.reject do |slot|
           slot.events.to_i < 1
         end
@@ -39,9 +39,10 @@ module Dumbo
       class Slot
         attr_reader :topic, :time, :paths, :events
 
-        def initialize(sources, hdfs, topic, time)
+        def initialize(sources, hdfs, hdfs_cache, topic, time)
           @sources = sources
           @hdfs = hdfs
+          @hdfs_cache = hdfs_cache
           @topic = topic
           @time = time
           @paths = paths!
@@ -61,10 +62,10 @@ module Dumbo
 
         def paths!
           begin
-            @sources[@topic]['input']['camus'].map do |hdfs_root|
+            [@sources[@topic]['input']['camus'], @sources[@topic]['input']['camusStale']].flatten.compact.uniq.map do |hdfs_root|
               path = "#{hdfs_root}/hourly/#{@time.strftime("%Y/%m/%d/%H")}"
               begin
-                @hdfs.list(path).map do |entry|
+                @hdfs_cache[path] ||= @hdfs.list(path).map do |entry|
                   File.join(path, entry['pathSuffix']) if entry['pathSuffix'] =~ /\.gz$/
                 end
               rescue => e
