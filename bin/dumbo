@@ -92,6 +92,24 @@ CLI.for(Dumbo::CLI) do
     :long => "--hadoopDependencyCoordinates VERSION",
     :default => "2.4.1",
     :description => 'specifiy the hadoopDependencyCoordinates (defaults to 2.4.1)'
+
+  option :forced_interval,
+    :short => '-i INTERVAL',
+    :long => '--interval INTERVAL',
+    :description => 'force an explicit interval',
+    :proc => Proc.new { |x|
+      intervals = x.split("/")
+      raise "illegal interval" if intervals.length > 2
+      intervals[0] = Time.parse(intervals[0]).utc
+      if intervals.length == 1
+        intervals[1] = intervals[0] + 1.hour
+      else
+        intervals[1] = Time.parse(intervals[1]).utc
+      end
+
+      raise "illegal interval" if intervals[1] <= intervals[0]
+      intervals
+    }
 end.run
 
 # vim: et ts=2 sw=2
