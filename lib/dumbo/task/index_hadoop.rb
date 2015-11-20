@@ -52,6 +52,11 @@ module Dumbo
               partitionsSpec: {
                 type: "none",
               },
+              indexSpec: {
+                bitmap: {
+                  type: @source['output']['bitmap'] || "concise",
+                },
+              },
             },
           },
         }
