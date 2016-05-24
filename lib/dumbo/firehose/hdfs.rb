@@ -62,8 +62,8 @@ module Dumbo
 
         def paths!
           begin
-            [@sources[@topic]['input']['camus'], @sources[@topic]['input']['camusStale']].flatten.compact.uniq.map do |hdfs_root|
-              path = "#{hdfs_root}/hourly/#{@time.strftime("%Y/%m/%d/%H")}"
+            [@sources[@topic]['input']['gobblin'], @sources[@topic]['input']['camusStale']].flatten.compact.uniq.map do |hdfs_root|
+              path = "#{hdfs_root}/#{@time.strftime("%Y/%m/%d/%H")}"
               begin
                 @hdfs_cache[path] ||= @hdfs.list(path).map do |entry|
                   File.join(path, entry['pathSuffix']) if entry['pathSuffix'] =~ /\.gz$/
@@ -73,7 +73,7 @@ module Dumbo
               end
             end.flatten.compact
           rescue
-            $log.error("#{@topic} -> input.camus must be an array of HDFS paths")
+            $log.error("#{@topic} -> input.gobblin must be an array of HDFS paths")
             exit 1
           end
         end

@@ -6,7 +6,7 @@
         "column": "timestamp",
         "format": "iso"
       },
-      "camus": [
+      "gobblin": [
         "/hdfs/location1",
         "/hdfs/location2"
       ]

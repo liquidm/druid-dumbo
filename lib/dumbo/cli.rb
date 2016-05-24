@@ -95,7 +95,7 @@ module Dumbo
         end
       end
 
-      lag_check = [source['input']['camus']].flatten.compact.uniq
+      lag_check = [source['input']['gobblin']].flatten.compact.uniq
       if lag_check.size > 0
         last_non_lagging_slot = validation_interval[0]
 

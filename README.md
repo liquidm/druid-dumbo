@@ -32,13 +32,13 @@ The repo contains examples for database.json and sources.json.
 
 ## Assumption / Notes
 
-* HDFS contains data in gzip'd files in [camus](https://github.com/liquidm/camus)-style [folders](https://github.com/liquidm/druid-dumbo/blob/master/lib/dumbo/firehose/hdfs.rb#L65)
+* HDFS contains data in gzip'd files in [gobblin](https://github.com/liquidm/gobblin)-style [folders](https://github.com/liquidm/druid-dumbo/blob/master/lib/dumbo/firehose/hdfs.rb#L65)
 * [database.json](https://github.com/liquidm/druid-dumbo/blob/master/database.json.example) content is passed straight into [MySql2](http://api.rubyonrails.org/classes/ActiveRecord/ConnectionAdapters/MysqlAdapter.html)
 * [sources.json](https://github.com/liquidm/druid-dumbo/blob/master/sources.json.example) uses keys in the format "service/dataSource" as established in [ruby-druid](https://github.com/ruby-druid/ruby-druid)
 
 ## About verify
 
-Verify uses camus counters in HDFS to compare the total number of events in HDFS vs. in druid. To do this, there is a hard coded aggregation count named "events". If the count mismatches or the schema, an [index hadoop](http://druid.io/docs/latest/Tasks.html#index-hadoop-task) task is spawned.
+Verify uses gobblin counters in HDFS to compare the total number of events in HDFS vs. in druid. To do this, there is a hard coded aggregation count named "events". If the count mismatches or the schema, an [index hadoop](http://druid.io/docs/latest/Tasks.html#index-hadoop-task) task is spawned.
 
 If a ```source['input']['epoc']``` is set, verify will enforce the interval to not go beyond this point. This is useful, if you know you have incomplete HDFS data and want to keep the existing segments.
 

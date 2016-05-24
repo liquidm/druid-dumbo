@@ -120,6 +120,7 @@ module Dumbo
 
       nagios_level = 0
       nagios_display = []
+
       @druid.data_source(source_name).post(query).each_with_index do |row, ii|
         druid_counter = row['result'].values.inject(0) {|sum,val| sum + val}
         hdfs_counter = slots[ii].events
