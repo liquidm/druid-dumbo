@@ -20,7 +20,7 @@ module Dumbo
       end
       @topics = opts[:topics] || @sources.keys
       @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
-      @interval = opts[:forced_interval] || [((Time.now.utc-(opts[:window] + opts[:offset]).hours).floor).utc, (Time.now.utc-opts[:offset].hour).floor(2.hour).utc]
+      @interval = opts[:forced_interval] || [((Time.now.utc-(opts[:window] + opts[:offset]).hours).floor).utc, (Time.now.utc-opts[:offset].hour).floor(1.hour).utc]
       @tasks = []
       @limit = opts[:limit]
       @hadoop_version = opts[:hadoop_version]
