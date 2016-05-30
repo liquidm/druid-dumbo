@@ -90,8 +90,8 @@ CLI.for(Dumbo::CLI) do
   option :hadoop_version,
     :short => "-v VERSION",
     :long => "--hadoopDependencyCoordinates VERSION",
-    :default => "2.4.1",
-    :description => 'specifiy the hadoopDependencyCoordinates (defaults to 2.4.1)'
+    :default => "2.3.0",
+    :description => 'specifiy the hadoopDependencyCoordinates (defaults to 2.3.0 as Druid does)'
 
   option :forced_interval,
     :short => '-i INTERVAL',
