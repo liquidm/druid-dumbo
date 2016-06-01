@@ -62,7 +62,7 @@ module Dumbo
 
         def paths!
           begin
-            [@sources[@topic]['input']['gobblin'], @sources[@topic]['input']['camusStale']].flatten.compact.uniq.map do |hdfs_root|
+            [@sources[@topic]['input']['gobblin'], @sources[@topic]['input']['gobblinStale']].flatten.compact.uniq.map do |hdfs_root|
               path = "#{hdfs_root}/#{@time.strftime("%Y/%m/%d/%H")}"
               begin
                 @hdfs_cache[path] ||= @hdfs.list(path).map do |entry|
