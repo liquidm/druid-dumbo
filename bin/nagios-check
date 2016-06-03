@@ -83,7 +83,7 @@ module Dumbo
 
     def run
       @db = Sequel.connect(MultiJson.load(File.read(opts[:database])))
-      @druid = Druid::Client.new(opts[:zookeeper], { :discovery_path  => opts[:zookeeper_path]})
+      @druid = Druid::Client.new(opts[:zookeeper], { :discovery_path => opts[:zookeeper_path]})
       @sources = MultiJson.load(File.read(opts[:sources]))
       @sources.each do |source_name, source|
         source['service'] = source_name.split("/")[0]
