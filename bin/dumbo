@@ -110,6 +110,11 @@ CLI.for(Dumbo::CLI) do
       raise "illegal interval" if intervals[1] <= intervals[0]
       intervals
     }
+
+  option :force,
+    :long => '--force',
+    :description => 'force segment generation regardless of state'
+
 end.run
 
 # vim: et ts=2 sw=2

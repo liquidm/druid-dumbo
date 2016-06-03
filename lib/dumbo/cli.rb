@@ -24,6 +24,7 @@ module Dumbo
       @tasks = []
       @limit = opts[:limit]
       @hadoop_version = opts[:hadoop_version]
+      @forced = opts[:force]
     end
 
     def run
@@ -115,7 +116,10 @@ module Dumbo
       end
 
       @hdfs.slots(source_name, validation_interval).each do |slot|
-        next if slot.paths.length < 1 || slot.events < 1
+        if slot.paths.length < 1 || slot.events < 1
+          $log.info("skipping segments w/o raw data", slot: slot.time)
+          next
+        end
 
         segments = @segments.select do |s|
           s.source == source['dataSource'] &&
@@ -130,7 +134,10 @@ module Dumbo
         currentMetrics = Set.new(segments.map(&:metrics).flatten)
         currentDimensions = Set.new(segments.map(&:dimensions))
 
-        if !segment
+        if @forced
+          $log.info("force rebuild segment for", slot: slot.time)
+          rebuild = true
+        elsif !segment
           $log.info("found missing segment for", slot: slot.time)
           rebuild = true
         elsif segment_events != slot.events
