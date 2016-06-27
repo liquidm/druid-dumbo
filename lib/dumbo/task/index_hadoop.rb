@@ -49,6 +49,9 @@ module Dumbo
             tuningConfig: {
               type: "hadoop",
               overwriteFiles: true,
+              ignoreInvalidRows: true,
+              buildV9Directly: true,
+              useCombiner: true,
               partitionsSpec: {
                 type: "none",
               },
