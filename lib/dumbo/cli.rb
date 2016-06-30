@@ -252,7 +252,7 @@ module Dumbo
           if currentMetrics != expectedMetrics
             possibleMetrics = currentMetrics & expectedMetrics
 
-            if possibleMetrics < expectedMetrics && possibleMetrics != currentMetrics
+            if possibleMetrics <= expectedMetrics && possibleMetrics != currentMetrics
               $log.info("detected a possible metrics reduction")
               should_compact = true
             end
@@ -262,7 +262,7 @@ module Dumbo
           if currentDimensions != expectedDimensions
             possibleDimensions = currentDimensions & expectedDimensions
 
-            if possibleDimensions < expectedDimensions && possibleDimensions != currentDimensions
+            if possibleDimensions <= expectedDimensions && possibleDimensions != currentDimensions
               $log.info("detected a possible dimensions reduction")
               should_compact = true
             end
