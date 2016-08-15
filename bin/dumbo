@@ -72,7 +72,7 @@ CLI.for(Dumbo::CLI) do
   option :mode,
     :short => '-m MODE',
     :long => '--mode MODE',
-    :description => 'mode to perform (verify, compact, unshard)',
+    :description => 'mode to perform (verify, merge, compact, unshard)',
     :default => "verify"
 
   option :dryrun,

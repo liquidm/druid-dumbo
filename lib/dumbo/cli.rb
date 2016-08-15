@@ -36,6 +36,13 @@ module Dumbo
           validate_events(topic)
         end
         run_tasks
+      when "merge"
+        $log.info("merging segments")
+        @segments = Dumbo::Segment.all(@db, @druid)
+        @topics.each do |topic|
+          merge_segments(topic)
+        end
+        run_tasks
       when "compact"
         $log.info("compacting segments")
         @segments = Dumbo::Segment.all(@db, @druid)
@@ -230,6 +237,22 @@ module Dumbo
       end
     end
 
+    def merge_segments(topic)
+      source = @sources[topic]
+      $log.info("compacting scan", topic: topic, interval: @interval)
+      merging = get_overlapping_segments_and_interval(source, @interval)
+      segment_size = get_segment_granularity(source)
+      merging[:interval][0].to_i.step(merging[:interval][-1].to_i - 1, segment_size) do |start_time|
+        segment_interval = [Time.at(start_time).utc, Time.at(start_time + segment_size).utc]
+        segment_input = get_overlapping_segments_and_interval(source, segment_interval, merging[:segments])
+        maxShards = (source['output'] && source['output']['maxShards']) || 10
+        if maxShards > 0 && maxShards < segment_input[:segments].length
+          $log.info("detected too many shards,", is: segment_input[:segments].length, max: maxShards)
+          @tasks << Task::Index.new(source, segment_interval)
+        end
+      end
+    end
+
     def compact_segments(topic)
       source = @sources[topic]
       compact_interval = [@interval[0].utc, @interval[-1].floor(1.day).utc]
@@ -277,7 +300,7 @@ module Dumbo
         end
 
         maxShards = (source['output'] && source['output']['maxShards']) || 0
-        if maxShards > 0 && maxShards > segment_input[:segments].length
+        if maxShards > 0 && maxShards < segment_input[:segments].length
           $log.info("detected too many shards,", is: segment_input[:segments].length, max: maxShards)
           must_compact = true
         end
