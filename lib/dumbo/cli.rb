@@ -50,13 +50,6 @@ module Dumbo
           compact_segments(topic)
         end
         run_tasks
-      when "unshard"
-        $log.info("merging segment shards")
-        @segments = Dumbo::Segment.all(@db, @druid)
-        @topics.each do |topic|
-          unshard_segments(topic)
-        end
-        run_tasks
       else
         $log.error("Unknown mode #{opts[:mode]}, try -h")
       end
@@ -306,26 +299,6 @@ module Dumbo
         end
 
         @tasks << Task::Index.new(source, segment_interval) if must_compact
-      end
-    end
-
-    def unshard_segments(topic)
-      $log.info("merging segments for", topic: topic)
-
-      source = @sources[topic]
-      dataSource = source['dataSource']
-
-      @segments.select do |segment|
-        segment.source == dataSource &&
-        segment.interval.first >= @interval.first &&
-        segment.interval.last <= @interval.last
-      end.group_by do |segment|
-        segment.interval.map(&:iso8601).join('/')
-      end.each do |interval, segments|
-        if %w(linear hashed).include?(segments.first.shardSpec['type'])
-          $log.info("merging segments", for: interval, segments: segments.length)
-          @tasks << Task::Index.new(source, segments.first.interval)
-        end
       end
     end
 

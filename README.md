@@ -46,10 +46,6 @@ If a ```source['input']['epoc']``` is set, verify will enforce the interval to n
 
 Compacting verifies segmentGranularity and schema. If a mismatch is detected, an [ingestSegment](http://druid.io/docs/latest/Firehose.html#ingestsegmentfirehose) task is spawned.
 
-## About unsharding
-
-Druid does auto-merging of segments, however they must not be shared. That's why dumbo supports ```-m unshard``` to merge sharded segments together, i.e. it will spawn an [ingestSegment](http://druid.io/docs/latest/Firehose.html#ingestsegmentfirehose) task with sharding disabled.
-
 ## Contributing
 
 1. [Fork it](https://github.com/liquidm/druid-dumbo/fork)
