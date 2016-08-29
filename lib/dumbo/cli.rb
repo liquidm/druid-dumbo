@@ -4,8 +4,8 @@ require 'druid'
 
 require 'dumbo/segment'
 require 'dumbo/firehose/hdfs'
-require 'dumbo/task/index'
-require 'dumbo/task/index_hadoop'
+require 'dumbo/task/reintake'
+require 'dumbo/task/compact_segments'
 
 module Dumbo
   class CLI
