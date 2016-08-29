@@ -23,7 +23,6 @@ module Dumbo
       @interval = opts[:forced_interval] || [((Time.now.utc-(opts[:window] + opts[:offset]).hours).floor).utc, (Time.now.utc-opts[:offset].hour).floor(1.hour).utc]
       @tasks = []
       @limit = opts[:limit]
-      @hadoop_version = opts[:hadoop_version]
       @forced = opts[:force]
     end
 
@@ -185,7 +184,7 @@ module Dumbo
         end
 
         next unless rebuild
-        @tasks << Task::IndexHadoop.new(source, [slot.time, slot.time+1.hour], slot.patterns, @hadoop_version)
+        @tasks << Task::Reintake.new(source, [slot.time, slot.time+1.hour], slot.patterns)
       end
     end
 
@@ -241,7 +240,7 @@ module Dumbo
         maxShards = (source['output'] && source['output']['maxShards']) || 10
         if maxShards > 0 && maxShards < segment_input[:segments].length
           $log.info("detected too many shards,", is: segment_input[:segments].length, max: maxShards)
-          @tasks << Task::Index.new(source, segment_interval)
+          @tasks << Task::CompactSegments.new(source, segment_interval)
         end
       end
     end
@@ -298,7 +297,7 @@ module Dumbo
           must_compact = true
         end
 
-        @tasks << Task::Index.new(source, segment_interval) if must_compact
+        @tasks << Task::CompactSegments.new(source, segment_interval) if must_compact
       end
     end
 

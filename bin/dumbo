@@ -87,12 +87,6 @@ CLI.for(Dumbo::CLI) do
     :description => 'limit the number of tasks to spawn (defaults to unlimited)',
     :proc => Proc.new {|x| x.to_i }
 
-  option :hadoop_version,
-    :short => "-v VERSION",
-    :long => "--hadoopDependencyCoordinates VERSION",
-    :default => "2.3.0",
-    :description => 'specifiy the hadoopDependencyCoordinates (defaults to 2.3.0 as Druid does)'
-
   option :forced_interval,
     :short => '-i INTERVAL',
     :long => '--interval INTERVAL',

@@ -2,18 +2,15 @@ require 'dumbo/task/base'
 
 module Dumbo
   module Task
-    class IndexHadoop < Base
-      def initialize(source, interval, paths, hadoop_version)
+    class CompactSegments < Base
+      def initialize(source, interval)
         @source = source
         @interval = interval
-        @paths = paths
-        @hadoop_version = hadoop_version
       end
 
       def as_json(options = {})
         config = {
           type: 'index_hadoop',
-          hadoopDependencyCoordinates: ["org.apache.hadoop:hadoop-client:#{@hadoop_version}"],
           spec: {
             dataSchema: {
               dataSource: @source['dataSource'],
@@ -32,18 +29,23 @@ module Dumbo
               },
               metricsSpec: (@source['metrics'] || {}).map do |name, aggregator|
                 { type: aggregator, name: name, fieldName: name }
-              end + [{ type: "count", name: "events" }],
+              # WARNING: do NOT use count for events, will count in segment vs count in raw input
+              end + [{ type: "doubleSum", name: "events", fieldName: "events" }],
               granularitySpec: {
                 segmentGranularity: @source['output']['segmentGranularity'] || "hour",
                 queryGranularity: @source['output']['queryGranularity'] || "minute",
-                intervals: ["#{@interval.first.iso8601}/#{@interval.last.iso8601}"],
               }
             },
             ioConfig: {
               type: 'hadoop',
               inputSpec: {
-                type: 'static',
-                paths: @paths.join(','),
+                type: 'dataSource',
+                ingestionSpec: {
+                  type: 'dataSource',
+                  dataSource: @source['dataSource'],
+                  interval: interval,
+                  granularity: @source['output']['queryGranularity'] || "minute",
+                },
               },
             },
             tuningConfig: {
