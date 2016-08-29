@@ -162,7 +162,7 @@ module Dumbo
             when '__time'
               type = 'LONG'
             when 'events'
-              type = 'LONG'
+              next # druid can't make up it's mind if this is float or long, so we ignore it
             else
               case source['metrics'][name]
               when 'doubleSum'
