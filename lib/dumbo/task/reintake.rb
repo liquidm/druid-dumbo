@@ -67,7 +67,7 @@ module Dumbo
             targetPartitionSize: @source['output']['targetPartitionSize'],
             numShards: -1,
           }
-        elsif (@source['output']['numShards'] || 0) > 1
+        elsif (@source['output']['numShards'] || 0) > 0
           config[:spec][:tuningConfig][:partitionsSpec] = {
             type: "hashed",
             targetPartitionSize: -1,
