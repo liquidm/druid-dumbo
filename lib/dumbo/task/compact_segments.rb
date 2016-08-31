@@ -5,7 +5,7 @@ module Dumbo
     class CompactSegments < Base
       def initialize(source, interval)
         @source = source
-        @interval = interval
+        @interval = interval.join("/")
       end
 
       def as_json(options = {})
@@ -34,6 +34,7 @@ module Dumbo
               granularitySpec: {
                 segmentGranularity: @source['output']['segmentGranularity'] || "hour",
                 queryGranularity: @source['output']['queryGranularity'] || "minute",
+                intervals: [@interval],
               }
             },
             ioConfig: {
@@ -43,7 +44,7 @@ module Dumbo
                 ingestionSpec: {
                   type: 'dataSource',
                   dataSource: @source['dataSource'],
-                  interval: interval,
+                  interval: @interval,
                   granularity: @source['output']['queryGranularity'] || "minute",
                 },
               },
