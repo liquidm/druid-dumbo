@@ -23,6 +23,7 @@ module Dumbo
         if response.code != '200'
           puts uri
           puts inspect
+          puts response.inspect
           raise "request failed"
         end
 
@@ -43,6 +44,7 @@ module Dumbo
         if response.code != '200'
           puts uri
           puts inspect
+          puts response.inspect
           raise "request failed"
         end
 

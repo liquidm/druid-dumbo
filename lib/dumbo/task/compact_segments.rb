@@ -5,7 +5,7 @@ module Dumbo
     class CompactSegments < Base
       def initialize(source, interval)
         @source = source
-        @interval = interval.join("/")
+        @interval = interval.map{|ii| ii.iso8601}.join("/")
       end
 
       def as_json(options = {})
