@@ -91,7 +91,7 @@ module Dumbo
       end
       @topics = opts[:topics] || @sources.keys
       @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
-      @interval = [(Time.now-14.day).floor(1.day).utc, (Time.now - 1.hours).floor(1.hour).utc]
+      @interval = [(Time.now-14.day).floor(1.day).utc, (Time.now - 2.hours).floor(1.hour).utc]
       @segments = Dumbo::Segment.all(@db, @druid)
       @topics.each do |topic|
         validate_events(topic)
