@@ -5,6 +5,8 @@ module Dumbo
     class CompactSegments < Base
       def initialize(source, interval)
         @source = source
+        @source['input'] ||= {}
+        @source['input']['timestamp'] ||= {}
         @interval = interval.map{|ii| ii.iso8601}.join("/")
       end
 
@@ -18,8 +20,8 @@ module Dumbo
                 parseSpec: {
                   format: "json",
                   timestampSpec: {
-                    column: ((@source['input']['timestamp'] || {})['column'] || 'timestamp') rescue 'timestamp',
-                    format: ((@source['input']['timestamp'] || {})['format'] || 'ruby') rescue 'ruby',
+                    column: (@source['input']['timestamp']['column'] || 'timestamp'),
+                    format: (@source['input']['timestamp']['format'] || 'ruby'),
                   },
                   dimensionsSpec: {
                     dimensions: (@source['dimensions'] || []),
