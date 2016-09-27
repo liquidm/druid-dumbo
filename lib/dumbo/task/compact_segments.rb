@@ -18,8 +18,8 @@ module Dumbo
                 parseSpec: {
                   format: "json",
                   timestampSpec: {
-                    column: ((@source['input']['timestamp'] || {})['column'] || "timestamp"),
-                    format: ((@source['input']['timestamp'] || {})['format'] || "ruby"),
+                    column: ((@source['input']['timestamp'] || {})['column'] || 'timestamp') rescue 'timestamp',
+                    format: ((@source['input']['timestamp'] || {})['format'] || 'ruby') rescue 'ruby',
                   },
                   dimensionsSpec: {
                     dimensions: (@source['dimensions'] || []),
