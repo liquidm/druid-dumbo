@@ -184,7 +184,7 @@ module Dumbo
         end
 
         next unless rebuild
-        if @overlord_scanner.exist?(source['dataSource'], "#{slot.time.iso8601}/#{@(slot.time+1.hour).iso8601}")
+        if @overlord_scanner.exist?(source['dataSource'], "#{slot.time.iso8601}/#{(slot.time+1.hour).iso8601}")
           "Tasks exist, skipping"
         else
           @tasks << Task::Reintake.new(source, [slot.time, slot.time+1.hour], slot.patterns)

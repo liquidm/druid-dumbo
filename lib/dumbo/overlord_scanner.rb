@@ -6,9 +6,7 @@ module Dumbo
     end
 
     def current_jobs
-      if @current_jobs
-        $log.info("Using cached copy of current jobs")
-      else
+      unless @current_jobs
         @current_jobs = {}
         %w{running pending waiting}.each do |type|
           @current_jobs.merge! fetch_tasks("http://#{@overlord}/druid/indexer/v1/#{type}Tasks", type)
