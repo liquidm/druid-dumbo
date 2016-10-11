@@ -70,8 +70,7 @@ module Dumbo
                   File.join(path, entry['pathSuffix']) if entry['pathSuffix'] =~ /\.gz$/
                 end
               rescue => e
-                puts e
-                nil
+                []
               end
             end.flatten.compact
           rescue
