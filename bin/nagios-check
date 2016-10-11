@@ -116,14 +116,16 @@ module Dumbo
         .granularity(:hour)
         .interval(validation_interval.first, validation_interval.last)
 
-      slots = @hdfs.slots(source_name, validation_interval)
+      #slots = @hdfs.slots(source_name, validation_interval)
 
       nagios_level = 0
       nagios_display = []
 
       @druid.data_source(source_name).post(query).each_with_index do |row, ii|
         druid_counter = row['result'].values.inject(0) {|sum,val| sum + val}
-        hdfs_counter = slots[ii].events
+        druid_hour = Time.parse(row['timestamp'])
+
+        hdfs_counter = @hdfs.slots(source_name, [druid_hour, druid_hour]).inject(0) {|sum, slot| sum + slot.events}
 
         delta = hdfs_counter - druid_counter
         percentage = ((druid_counter.to_f / hdfs_counter) * 100).round(2)
