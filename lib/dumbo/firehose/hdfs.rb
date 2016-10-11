@@ -63,12 +63,14 @@ module Dumbo
         def paths!
           begin
             [@sources[@topic]['input']['gobblin'], @sources[@topic]['input']['gobblinStale']].flatten.compact.uniq.map do |hdfs_root|
+              hdfs_root = hdfs_root.match(/^(hdfs\:\/\/.*?)?(\/.*$)/)[2]
               path = "#{hdfs_root}/#{@time.strftime("%Y/%m/%d/%H")}"
               begin
                 @hdfs_cache[path] ||= @hdfs.list(path).map do |entry|
                   File.join(path, entry['pathSuffix']) if entry['pathSuffix'] =~ /\.gz$/
                 end
               rescue => e
+                puts e
                 nil
               end
             end.flatten.compact

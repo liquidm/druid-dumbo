@@ -6,6 +6,7 @@ require 'dumbo/segment'
 require 'dumbo/firehose/hdfs'
 require 'dumbo/task/reintake'
 require 'dumbo/task/compact_segments'
+require 'dumbo/overlord_scanner'
 
 module Dumbo
   class CLI
@@ -24,6 +25,7 @@ module Dumbo
       @tasks = []
       @limit = opts[:limit]
       @forced = opts[:force]
+      @overlord_scanner = OverlordScanner.new(opts[:overlord])
     end
 
     def run
@@ -56,10 +58,8 @@ module Dumbo
     end
 
     def run_tasks
-      if @limit > 0 && @tasks.length > @limit
-        $log.info("Limiting task execution,", actually: @tasks.length, limit: @limit)
-        @tasks = @tasks[0,@limit]
-      end
+      counter = 0
+      overlord_scanner = OverlordScanner.new(opts[:overlord])
 
       @tasks.each do |task|
         if opts[:dryrun]
@@ -123,7 +123,7 @@ module Dumbo
         segments = @segments.select do |s|
           s.source == source['dataSource'] &&
           s.interval.first <= slot.time &&
-          s.interval.last >= slot.time + 1.hour
+          s.interval.last > slot.time
         end
 
         segment = segments.first
@@ -184,7 +184,11 @@ module Dumbo
         end
 
         next unless rebuild
-        @tasks << Task::Reintake.new(source, [slot.time, slot.time+1.hour], slot.patterns)
+        if @overlord_scanner.exist?(source['dataSource'], "#{slot.time.iso8601}/#{@(slot.time+1.hour).iso8601}")
+          "Tasks exist, skipping"
+        else
+          @tasks << Task::Reintake.new(source, [slot.time, slot.time+1.hour], slot.patterns)
+        end
       end
     end
 

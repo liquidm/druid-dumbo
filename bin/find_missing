@@ -1,0 +1,71 @@
+#!/usr/bin/env ruby
+
+ROOT = File.expand_path('../..', __FILE__)
+
+require 'bundler/setup'
+require 'liquid/boot'
+require 'sequel'
+require 'multi_json'
+require 'webhdfs'
+
+module Dumbo
+  class RemoveUnused
+    def initialize
+      @db = Sequel.connect(MultiJson.load(File.read(opts[:database])))
+      @namenodes = [opts[:namenodes]].flatten
+    end
+
+    def hdfs
+      unless @hdfs
+        @namenodes.each do |host|
+          begin
+            $log.info('connecting to', namenode: host)
+            @hdfs = WebHDFS::Client.new(host, 50070)
+            @hdfs.list('/')
+            break
+          rescue
+            $log.info('failed to use', namenode: host)
+            @hdfs = nil
+          end
+        end
+      end
+      raise 'no namenode is up and running' unless @hdfs
+      @hdfs
+    end
+
+    def run
+      segments = @db[:druid_segments].where(used: true).each do |row|
+        segment = MultiJson.load(row[:payload])
+        load_spec = segment['loadSpec']
+        type = load_spec['type']
+
+        if type == "hdfs"
+          hdfs_location = load_spec['path'].gsub(/hdfs:\/\/us2\//,'/')
+          begin
+            hdfs.stat(hdfs_location)
+          rescue => e
+            puts segment['dataSource']
+            puts segment['start']
+            puts hdfs_location
+            puts e
+          end
+        end
+      end
+    end
+  end
+end
+
+CLI.for(Dumbo::RemoveUnused) do
+  option :namenodes,
+    :short => '-n LIST',
+    :long => '--namenodes LIST',
+    :description => 'HDFS namenodes (comma seperated), defaults to "localhost"',
+    :default => %w(mgmt1.us2.lqm.io mgmt2.us2.lqm.io),
+    :proc => Proc.new { |x| x.split(',') }
+
+  option :database,
+    :short => '-d PATH',
+    :long => '--database PATH',
+    :description => 'path to database config, defaults to "database.json"',
+    :default => 'database.json'
+end.run
