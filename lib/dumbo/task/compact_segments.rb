@@ -65,6 +65,10 @@ module Dumbo
                   type: @source['output']['bitmap'] || "concise",
                 },
               },
+              jobProperties: {
+                 "mapreduce.job.classloader" => "true",
+                 "mapreduce.job.classloader.system.classes" => "-javax.validation.,java.,javax.,org.apache.commons.logging.,org.apache.log4j.,org.apache.hadoop.",
+              },
             },
           },
         }
