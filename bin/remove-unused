@@ -50,9 +50,9 @@ module Dumbo
         case type
         when "hdfs"
           removed_segments[type] += 1
-          next if opts[:dryrun]
-          hdfs_location = File.expand_path('..', load_spec['path'])
+          hdfs_location = File.expand_path('..', load_spec['path'].gsub(/hdfs:\/\/\w*?\//,'/')
           $log.info("deleting", :hdfs => hdfs_location)
+          next if opts[:dryrun]
           hdfs.delete(hdfs_location, :recursive => true)
         else
           if opts[:force]
@@ -85,7 +85,7 @@ CLI.for(Dumbo::RemoveUnused) do
     :short => '-n LIST',
     :long => '--namenodes LIST',
     :description => 'HDFS namenodes (comma seperated), defaults to "localhost"',
-    :default => %w(localhost),
+    :default => %w(mgmt1.us2.lqm.io mgmt2.us2.lqm.io),
     :proc => Proc.new { |x| x.split(',') }
 
   option :database,
