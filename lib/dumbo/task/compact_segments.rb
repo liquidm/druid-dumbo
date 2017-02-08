@@ -57,6 +57,7 @@ module Dumbo
               ignoreInvalidRows: true,
               buildV9Directly: true,
               useCombiner: true,
+              forceExtendableShardSpecs: true,
               partitionsSpec: {
                 type: "none",
               },

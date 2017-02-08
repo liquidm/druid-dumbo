@@ -49,6 +49,7 @@ module Dumbo
               overwriteFiles: true,
               ignoreInvalidRows: true,
               buildV9Directly: true,
+              forceExtendableShardSpecs: true,
               useCombiner: true,
               partitionsSpec: {
                 type: "none",
