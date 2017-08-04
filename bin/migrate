@@ -1,0 +1,53 @@
+#!/usr/bin/env ruby
+
+ROOT = File.expand_path('../..', __FILE__)
+
+require 'bundler/setup'
+require 'liquid/boot'
+require 'sequel'
+require 'multi_json'
+require 'pp'
+
+module Dumbo
+  class RemoveUnused
+    def initialize
+      @mysql = Sequel.connect({
+        "adapter" => "mysql2",
+        "host" => "broker6.dw.lqm.io",
+        "port" => "3306",
+        "database" => "druid",
+        "username" => "druid",
+        "password" => "#{node[:druid][:database][:password]}"
+      })
+      @postgres = Sequel.connect({
+        "adapter" => "postgres",
+        "host" => "zeus1.core.lqm.io",
+        "database" => "druid",
+        "username" => "druid",
+        "password" => "#{node[:druid][:database][:password]}"
+      })
+    end
+
+    def run
+      query = @mysql[:druid_segments].where(Sequel.lit("used = true and start > '2017-07-27' and start < '2017-07-29' and datasource like 'tracking%' and datasource not like '%test%'"))
+      puts query.sql
+      query.each do |row|
+        postgres_row = row.clone
+        postgres_row[:datasource] = postgres_row[:dataSource]
+        postgres_row.delete(:dataSource)
+        begin
+          # does not seem to work as advertised
+          # prio delete in psql appears prudent
+          @postgres[:druid_segments].insert_conflict.insert(postgres_row)
+          print '.'
+        rescue => e
+          puts "\nSkipping #{postgres_row[:id]}"
+          puts e
+        end
+      end
+    end
+  end
+end
+
+CLI.for(Dumbo::RemoveUnused) do
+end.run
