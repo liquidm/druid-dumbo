@@ -65,6 +65,7 @@ module Dumbo
                 bitmap: {
                   type: @source['output']['bitmap'] || "concise",
                 },
+                longEncoding: "auto",
               },
             },
           },
