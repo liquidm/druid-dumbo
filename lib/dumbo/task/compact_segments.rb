@@ -63,7 +63,7 @@ module Dumbo
               },
               indexSpec: {
                 bitmap: {
-                  type: @source['output']['bitmap'] || "concise",
+                  type: @source['output']['bitmap'] || "roaring",
                 },
                 longEncoding: "auto",
               },
@@ -73,7 +73,7 @@ module Dumbo
         if @source['output']['partitionDimension']
           config[:spec][:tuningConfig][:partitionsSpec] = {
              type: "dimension",
-             targetPartitionSize: @source['output']['targetPartitionSize'] || 5000000),
+             targetPartitionSize: (@source['output']['targetPartitionSize'] || 5000000),
              partitionDimension: @source['output']['partitionDimension'],
           }
         elsif (@source['output']['targetPartitionSize'] || 0) > 0
