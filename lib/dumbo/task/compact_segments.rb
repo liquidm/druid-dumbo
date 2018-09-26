@@ -70,7 +70,13 @@ module Dumbo
             },
           },
         }
-        if (@source['output']['targetPartitionSize'] || 0) > 0
+        if @source['output']['partitionDimension']
+          config[:spec][:tuningConfig][:partitionsSpec] = {
+             type: "dimension",
+             targetPartitionSize: @source['output']['targetPartitionSize'] || 5000000),
+             partitionDimension: @source['output']['partitionDimension'],
+          }
+        elsif (@source['output']['targetPartitionSize'] || 0) > 0
           config[:spec][:tuningConfig][:partitionsSpec] = {
             type: "hashed",
             targetPartitionSize: @source['output']['targetPartitionSize'],
