@@ -56,8 +56,9 @@ module Dumbo
               },
               indexSpec: {
                 bitmap: {
-                  type: @source['output']['bitmap'] || "concise",
+                  type: @source['output']['bitmap'] || "roaring",
                 },
+                longEncoding: "auto",
               },
             },
           },
