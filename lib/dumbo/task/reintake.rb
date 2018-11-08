@@ -68,7 +68,6 @@ module Dumbo
           targetPartitionSize: -1,
           numShards: 10,
         }
-        end
         config
       end
     end
