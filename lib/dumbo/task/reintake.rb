@@ -63,7 +63,13 @@ module Dumbo
             },
           },
         }
-        if (@source['output']['targetPartitionSize'] || 0) > 0
+        if @source['output']['partitionDimension']
+          config[:spec][:tuningConfig][:partitionsSpec] = {
+             type: "dimension",
+             partitionDimension: @source['output']['partitionDimension'],
+             numShards: (@source['output']['numShards'] || 10),
+          }
+        elsif (@source['output']['targetPartitionSize'] || 0) > 0
           config[:spec][:tuningConfig][:partitionsSpec] = {
             type: "hashed",
             targetPartitionSize: @source['output']['targetPartitionSize'],
