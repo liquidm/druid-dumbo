@@ -73,8 +73,8 @@ module Dumbo
         if @source['output']['partitionDimension']
           config[:spec][:tuningConfig][:partitionsSpec] = {
              type: "dimension",
-             targetPartitionSize: (@source['output']['targetPartitionSize'] || 2000000),
              partitionDimension: @source['output']['partitionDimension'],
+             numShards: (@source['output']['numShards'] || 10),
           }
         elsif (@source['output']['targetPartitionSize'] || 0) > 0
           config[:spec][:tuningConfig][:partitionsSpec] = {
