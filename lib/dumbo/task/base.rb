@@ -41,6 +41,11 @@ module Dumbo
           http.request(req)
         end
 
+        if response.code.start_with? '3'
+          $log.info("found redirect to active overlord: #{response['Location']}")
+          return finished?(response['Location'])
+        end
+
         if response.code != '200'
           puts uri
           puts inspect
