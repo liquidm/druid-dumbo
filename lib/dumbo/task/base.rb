@@ -31,8 +31,12 @@ module Dumbo
         @id = MultiJson.load(response.body)["task"]
       end
 
-      def finished?
-        uri = URI(@overlord + "/#{@id}/status")
+      def finished?(redirect)
+        if redirect
+          uri = URI(redirect)
+        else 
+          URI(@overlord + "/#{@id}/status")
+        end
 
         req = Net::HTTP::Get.new(uri.path, { 'Content-Type' => 'application/json' })
 
