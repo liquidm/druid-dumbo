@@ -156,33 +156,7 @@ module Dumbo
         elsif currentDimensions > expectedDimensions
           $log.info("found deleted dimensions", for: slot.time, delta: (currentDimensions - expectedDimensions).to_a)
           rebuild = true
-        else
-          segment.metadata(source['service'])['columns'].each do |name, column|
-            next if column['type'] == 'STRING' # dimension column
-
-            case name
-            when '__time'
-              type = 'LONG'
-            when 'events'
-              next # druid can't make up it's mind if this is float or long, so we ignore it
-            else
-              case source['metrics'][name]
-              when 'doubleSum'
-                type = 'FLOAT'
-              when 'longSum'
-                type = 'LONG'
-              when 'hyperUnique'
-                type = 'hyperUnique'
-              else
-                type = 'unknown'
-              end
-            end
-
-            if type != column['type']
-              $log.info("column type mismatch", for: slot.time, column: name, expected: type, got: column['type'])
-              rebuild = true
-            end
-          end
+        #todo column check was buggy so it has been disabled see releted commit
         end
 
         next unless rebuild
