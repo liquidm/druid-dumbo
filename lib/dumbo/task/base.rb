@@ -31,12 +31,8 @@ module Dumbo
         @id = MultiJson.load(response.body)["task"]
       end
 
-      def finished?(redirect = nil)
-        if redirect
-          uri = URI(redirect)
-        else 
-          uri = URI(@overlord + "/#{@id}/status")
-        end
+      def finished?
+        uri = URI(@overlord + "/#{@id}/status")
 
         req = Net::HTTP::Get.new(uri.path, { 'Content-Type' => 'application/json' })
 
@@ -47,7 +43,8 @@ module Dumbo
 
         if response.code.start_with? '3'
           $log.info("found redirect to active overlord: #{response['Location']}")
-          return finished?(response['Location'])
+          @overlord = response['Location']
+          return finished?
         end
 
         if response.code != '200'
