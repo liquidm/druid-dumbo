@@ -89,6 +89,11 @@ module Dumbo
             numShards: @source['output']['numShards'],
           }
         end
+
+        if (@source['output']['maxPartitionSize'])
+          config[:spec][:tuningConfig][:partitionsSpec][:maxPartitionSize] = @source['output']['maxPartitionSize']
+        end
+
         config
       end
     end
