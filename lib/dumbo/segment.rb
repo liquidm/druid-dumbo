@@ -2,12 +2,14 @@ require 'multi_json'
 
 module Dumbo
   class Segment
-    def self.all(db, druid)
-      @all ||= all!(db, druid)
+    def self.all(db, druid, sources)
+      @all ||= all!(db, druid, sources)
     end
 
-    def self.all!(db, druid)
-      segments = db[:druid_segments].where(used: true).map do |row|
+    def self.all!(db, druid, sources)
+      datasources = sources.values.map { |s| s['dataSource']}
+
+      segments = db[:druid_segments].where(used: true, datasource: datasources).map do |row|
         new(MultiJson.load(row[:payload]), druid)
       end
 

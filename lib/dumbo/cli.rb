@@ -32,21 +32,21 @@ module Dumbo
       case opts[:mode]
       when "verify"
         $log.info("validating events from HDFS")
-        @segments = Dumbo::Segment.all(@db, @druid)
+        @segments = Dumbo::Segment.all(@db, @druid, @sources)
         @topics.each do |topic|
           validate_events(topic)
         end
         run_tasks
       when "merge"
         $log.info("merging segments")
-        @segments = Dumbo::Segment.all(@db, @druid)
+        @segments = Dumbo::Segment.all(@db, @druid, @sources)
         @topics.each do |topic|
           merge_segments(topic)
         end
         run_tasks
       when "compact"
         $log.info("compacting segments")
-        @segments = Dumbo::Segment.all(@db, @druid)
+        @segments = Dumbo::Segment.all(@db, @druid, @sources)
         @topics.each do |topic|
           compact_segments(topic)
         end
