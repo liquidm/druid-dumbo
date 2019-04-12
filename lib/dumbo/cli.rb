@@ -25,6 +25,7 @@ module Dumbo
       @tasks = []
       @limit = opts[:limit]
       @forced = opts[:force]
+      @reverse = opts[:reverse]
       @overlord_scanner = OverlordScanner.new(opts[:overlord])
     end
 
@@ -58,6 +59,10 @@ module Dumbo
     end
 
     def run_tasks
+      if @reverse
+        @tasks = @tasks.reverse
+      end
+
       if @limit > 0 && @tasks.length > @limit
         $log.info("Limiting task execution,", actually: @tasks.length, limit: @limit)
         @tasks = @tasks[0,@limit]
