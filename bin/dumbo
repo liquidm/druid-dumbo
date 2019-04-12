@@ -7,6 +7,13 @@ require 'liquid/boot'
 require 'dumbo/cli'
 
 CLI.for(Dumbo::CLI) do
+  option :reverse,
+    :short => '-r BOOL',
+    :long => '--reverse BOOL',
+    :description => 'run jobs in reverse order',
+    :default => false,
+    :proc => Proc.new { |x| x.to_i }
+
   option :window,
     :short => '-w HOURS',
     :long => '--window HOURS',
