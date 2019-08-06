@@ -303,34 +303,34 @@ module Dumbo
       end
     end
 
-	def log_tasks_number service_name, number
-	  data = []
-	  begin
-		data = MultiJson.load(Diplomat::Kv.get("druid-dumbo/#{service_name}"))
-	  rescue
-	  end
+    def log_tasks_number service_name, number
+      data = []
+      begin
+        data = MultiJson.load(Diplomat::Kv.get("druid-dumbo/#{service_name}"))
+      rescue
+      end
 
-	  now = Time.now
-	  current_day = Time.utc(now.year, now.month, now.day, 0, 0, 0)
+      now = Time.now
+      current_day = Time.utc(now.year, now.month, now.day, 0, 0, 0)
 
       new_entry = {"tasks" => number, "ts" => current_day.to_s}
 
-	  if data.length > 10
-		data = data[1..10]
-	  end
+      if data.length > 10
+        data = data[1..10]
+      end
 
-	  updated = false
+      updated = false
 
-	  data.each do |entry|
-		if entry["ts"] == current_day.to_s
-		  entry["tasks"] = [entry["tasks"], new_entry["tasks"]].min
-		  updated = true
-		end
-	  end
+      data.each do |entry|
+        if entry["ts"] == current_day.to_s
+          entry["tasks"] = [entry["tasks"], new_entry["tasks"]].min
+          updated = true
+        end
+      end
 
-	  data << new_entry unless updated
+      data << new_entry unless updated
 
-	  Diplomat::Kv.put("druid-dumbo/#{service_name}", MultiJson.dump(data))
-	end
+      Diplomat::Kv.put("druid-dumbo/#{service_name}", MultiJson.dump(data))
+    end
   end
 end
