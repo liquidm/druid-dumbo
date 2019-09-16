@@ -14,7 +14,6 @@
     "output": {
       "segmentGranularity": "minute",
       "indexGranularity": "minute",
-      "numShards": 1
     },
     "metrics": {
       "value": "doubleSum"

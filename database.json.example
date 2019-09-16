@@ -1,6 +1,6 @@
 {
   "adapter": "postgres"
-  "host": "localhist",
+  "host": "localhost",
   "username": "druid",
   "password": "diurd",
   "database": "druid"

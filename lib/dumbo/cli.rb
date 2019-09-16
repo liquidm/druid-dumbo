@@ -38,13 +38,6 @@ module Dumbo
           validate_events(topic)
         end
         run_tasks
-      when "merge"
-        $log.info("merging segments")
-        @segments = Dumbo::Segment.all(@db, @druid, @sources)
-        @topics.each do |topic|
-          merge_segments(topic)
-        end
-        run_tasks
       when "compact"
         $log.info("compacting segments")
         @segments = Dumbo::Segment.all(@db, @druid, @sources)
@@ -176,7 +169,6 @@ module Dumbo
       newest = check_interval.last
 
       check_range = (oldest...newest)
-      $log.info("checking overlapping intervals for", dataSource: dataSource, interval: check_range)
 
       segments = available_segments.select do |segment|
         if segment.source == dataSource && (segment.interval[0]...segment.interval[-1]).overlaps?(check_range)
@@ -205,41 +197,36 @@ module Dumbo
         1.hour
       when 'day'
         1.day
+      when 'week'
+        7.days
+      when 'month'
+        1.month
+      when 'year'
+        1.year
       else
         raise "Unsupported segmentGranularity #{source['output']['segmentGranularity']}"
       end
     end
 
-    def merge_segments(topic)
-      source = @sources[topic]
-      $log.info("compacting scan", topic: topic, interval: @interval)
-      merging = get_overlapping_segments_and_interval(source, @interval)
-      segment_size = get_segment_granularity(source)
-      merging[:interval][0].to_i.step(merging[:interval][-1].to_i - 1, segment_size) do |start_time|
-        segment_interval = [Time.at(start_time).utc, Time.at(start_time + segment_size).utc]
-        segment_input = get_overlapping_segments_and_interval(source, segment_interval, merging[:segments])
-        maxShards = (source['output'] && source['output']['maxShards']) || 10
-        if maxShards > 0 && maxShards < segment_input[:segments].length
-          $log.info("detected too many shards,", is: segment_input[:segments].length, max: maxShards)
-          @tasks << Task::CompactSegments.new(source, segment_interval)
-        end
-      end
-    end
-
     def compact_segments(topic)
       source = @sources[topic]
-      compact_interval = [@interval[0].utc, @interval[-1].floor(1.day).utc]
-      compact_interval[0] -= 1.day if compact_interval[0] == compact_interval[-1]
-      $log.info("compacting scan", topic: topic, interval: compact_interval)
-      compacting = get_overlapping_segments_and_interval(source, compact_interval)
+
       segment_size = get_segment_granularity(source)
+      floor_date = [segment_size, 1.day].max
+
+      $log.info("request compaction", topic: topic, interval: @interval, granularity: (source['output']['segmentGranularity'] || 'hour').downcase)
+      compact_interval = [@interval[0].floor(floor_date).utc, @interval[-1].ceil(floor_date).utc]
+      $log.info("compacting scan", topic: topic, interval: compact_interval)
 
       expectedMetrics = Set.new(source['metrics'].keys).add("events")
       expectedDimensions = Set.new(source['dimensions'])
 
-      compacting[:interval][0].to_i.step(compacting[:interval][-1].to_i - 1, segment_size) do |start_time|
-        segment_interval = [Time.at(start_time).utc, Time.at(start_time + segment_size).utc]
-        segment_input = get_overlapping_segments_and_interval(source, segment_interval, compacting[:segments])
+      segment_interval = [compact_interval[0], compact_interval[0]]
+      while segment_interval[-1] < compact_interval[-1] do
+        segment_interval = [segment_interval[-1], segment_interval[-1].ceil(segment_size).utc]
+        $log.info("scanning segment", topic: topic, interval: segment_interval)
+
+        segment_input = get_overlapping_segments_and_interval(source, segment_interval)
 
         must_compact = segment_input[:segments].any? do |input_segment|
           should_compact = false
@@ -272,12 +259,6 @@ module Dumbo
           should_compact
         end
 
-        maxShards = (source['output'] && source['output']['maxShards']) || 0
-        if maxShards > 0 && maxShards < segment_input[:segments].length
-          $log.info("detected too many shards,", is: segment_input[:segments].length, max: maxShards)
-          must_compact = true
-        end
-
         @tasks << Task::CompactSegments.new(source, segment_interval) if must_compact
       end
     end
@@ -292,8 +273,6 @@ module Dumbo
         30.minutes
       when 'hour'
         1.hour
-      when 'day'
-        1.day
       else
         raise "Unsupported granularity #{g}"
       end

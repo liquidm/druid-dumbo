@@ -52,7 +52,8 @@ module Dumbo
               forceExtendableShardSpecs: true,
               useCombiner: true,
               partitionsSpec: {
-                type: "none",
+                type: "hashed",
+                targetPartitionSize: 419430400,
               },
               indexSpec: {
                 bitmap: {
@@ -62,11 +63,6 @@ module Dumbo
               },
             },
           },
-        }
-        config[:spec][:tuningConfig][:partitionsSpec] = {
-          type: "hashed",
-          targetPartitionSize: -1,
-          numShards: 10,
         }
         config
       end

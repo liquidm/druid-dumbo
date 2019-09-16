@@ -2,12 +2,12 @@
 
 Gem::Specification.new do |spec|
   spec.name          = "dumbo"
-  spec.version       = "0.1.0"
-  spec.authors       = ["remerge GmbH"]
-  spec.email         = ["tech@remerge.io"]
+  spec.version       = "0.2.0"
+  spec.authors       = ["LiquidM GmbH"]
+  spec.email         = ["tech@liquidm.com"]
   spec.summary       = %q{}
   spec.description   = %q{}
-  spec.homepage      = "https://github.com/remerge/dumbo"
+  spec.homepage      = "https://github.com/liquidm/druid-dumbo"
   spec.license       = "MIT"
 
   spec.files         = `git ls-files -z`.split("\x0")
