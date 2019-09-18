@@ -32,7 +32,7 @@ module Dumbo
               metricsSpec: (@source['metrics'] || {}).map do |name, aggregator|
                 { type: aggregator, name: name, fieldName: name }
               # WARNING: do NOT use count for events, will count in segment vs count in raw input
-              end + [{ type: "doubleSum", name: "events", fieldName: "events" }],
+              end + [{ type: "longSum", name: "events", fieldName: "events" }],
               granularitySpec: {
                 segmentGranularity: @source['output']['segmentGranularity'] || "hour",
                 queryGranularity: @source['output']['queryGranularity'] || "minute",
