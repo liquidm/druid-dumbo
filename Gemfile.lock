@@ -77,9 +77,11 @@ PLATFORMS
   ruby
 
 DEPENDENCIES
+  diplomat
   liquid-ext
   mysql2
   pg
+  pry
   ruby-druid!
   sequel
   webhdfs

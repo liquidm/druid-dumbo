@@ -1,4 +1,5 @@
 require 'multi_json'
+require 'diplomat'
 require 'sequel'
 require 'druid'
 
@@ -14,6 +15,7 @@ module Dumbo
       $log.info("scan", window: opts[:window])
       @db = Sequel.connect(MultiJson.load(File.read(opts[:database])))
       @druid = Druid::Client.new(opts[:zookeeper], { :discovery_path  => opts[:zookeeper_path]})
+      @service_name = opts[:sources].split("/").last.split(".").first
       @sources = MultiJson.load(File.read(opts[:sources]))
       @sources.each do |source_name, source|
         source['service'] = source_name.split("/")[0]
@@ -55,6 +57,8 @@ module Dumbo
       if @reverse
         @tasks = @tasks.reverse
       end
+
+      log_tasks_number(@service_name, @tasks.length)
 
       if @limit > 0 && @tasks.length > @limit
         $log.info("Limiting task execution,", actually: @tasks.length, limit: @limit)
@@ -278,5 +282,34 @@ module Dumbo
       end
     end
 
+    def log_tasks_number service_name, number
+      data = []
+      begin
+        data = MultiJson.load(Diplomat::Kv.get("druid-dumbo/#{service_name}"))
+      rescue
+      end
+
+      now = Time.now
+      current_day = Time.utc(now.year, now.month, now.day, 0, 0, 0)
+
+      new_entry = {"tasks" => number, "ts" => current_day.to_s}
+
+      if data.length > 10
+        data = data[1..10]
+      end
+
+      updated = false
+
+      data.each do |entry|
+        if entry["ts"] == current_day.to_s
+          entry["tasks"] = [entry["tasks"], new_entry["tasks"]].min
+          updated = true
+        end
+      end
+
+      data << new_entry unless updated
+
+      Diplomat::Kv.put("druid-dumbo/#{service_name}", MultiJson.dump(data))
+    end
   end
 end
