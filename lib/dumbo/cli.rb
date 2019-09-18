@@ -219,7 +219,7 @@ module Dumbo
       floor_date = [segment_size, 1.day].max
 
       $log.info("request compaction", topic: topic, interval: @interval, granularity: (source['output']['segmentGranularity'] || 'hour').downcase)
-      compact_interval = [@interval[0].floor(floor_date).utc, @interval[-1].ceil(floor_date).utc]
+      compact_interval = [@interval[0].ceil(floor_date).utc, @interval[-1].floor(floor_date).utc]
       $log.info("compacting scan", topic: topic, interval: compact_interval)
 
       expectedMetrics = Set.new(source['metrics'].keys).add("events")
