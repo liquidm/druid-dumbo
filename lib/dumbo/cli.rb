@@ -309,7 +309,10 @@ module Dumbo
 
       data << new_entry unless updated
 
-      Diplomat::Kv.put("druid-dumbo/#{service_name}", MultiJson.dump(data))
+      begin
+        Diplomat::Kv.put("druid-dumbo/#{service_name}", MultiJson.dump(data))
+      rescue
+      end
     end
   end
 end
