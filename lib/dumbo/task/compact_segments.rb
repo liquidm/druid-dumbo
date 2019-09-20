@@ -60,8 +60,7 @@ module Dumbo
               forceExtendableShardSpecs: true,
               partitionsSpec: {
                 type: "hashed",
-                targetPartitionSize: (@source['output']['targetPartitionSize'] || 419430400),
-                numShards: -1,
+                numShards: @source['output']['numShards'] || 3
               },
               indexSpec: {
                 bitmap: {
@@ -73,13 +72,19 @@ module Dumbo
           },
         }
 
-        if @source['output']['partitionDimension']
-          config[:spec][:tuningConfig][:partitionsSpec] = {
-             type: "dimension",
-             partitionDimension: @source['output']['partitionDimension'],
-             targetPartitionSize: (@source['output']['targetPartitionSize'] || 419430400),
-          }
+        if @source['output']['targetPartitionSize']
+          config[:spec][:tuningConfig][:partitionsSpec][:targetPartitionSize] = @source['output']['targetPartitionSize']
+          config[:spec][:tuningConfig][:partitionsSpec][:numShards] = -1
         end
+
+        # if @source['output']['partitionDimension']
+        #   config[:spec][:tuningConfig][:partitionsSpec] = {
+        #     type: "dimension",
+        #     partitionDimension: @source['output']['partitionDimension']
+        #     targetPartitionSize: (@source['output']['targetPartitionSize'] || 419430400)
+        #   }
+        # end
+
 
         config
       end
