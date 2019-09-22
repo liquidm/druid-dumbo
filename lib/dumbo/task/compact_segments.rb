@@ -58,7 +58,7 @@ module Dumbo
               buildV9Directly: true,
               useCombiner: true,
               forceExtendableShardSpecs: true,
-              maxRowsInMemory: 4000000,
+              maxRowsInMemory: 10000000,
               numBackgroundPersistThreads: 1,
               partitionsSpec: {
                 type: "hashed",

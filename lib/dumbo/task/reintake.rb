@@ -50,7 +50,7 @@ module Dumbo
               ignoreInvalidRows: true,
               buildV9Directly: true,
               forceExtendableShardSpecs: true,
-              maxRowsInMemory: 4000000,
+              maxRowsInMemory: 10000000,
               numBackgroundPersistThreads: 1,
               useCombiner: true,
               partitionsSpec: {
