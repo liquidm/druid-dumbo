@@ -58,6 +58,8 @@ module Dumbo
               buildV9Directly: true,
               useCombiner: true,
               forceExtendableShardSpecs: true,
+              maxRowsInMemory: 4000000,
+              numBackgroundPersistThreads: 1,
               partitionsSpec: {
                 type: "hashed",
                 numShards: @source['output']['numShards'] || 3
@@ -74,7 +76,7 @@ module Dumbo
 
         if @source['output']['targetPartitionSize']
           config[:spec][:tuningConfig][:partitionsSpec][:targetPartitionSize] = @source['output']['targetPartitionSize']
-          config[:spec][:tuningConfig][:partitionsSpec][:numShards] = -1
+          config[:spec][:tuningConfig][:partitionsSpec].delete(:numShards)
         end
 
         # if @source['output']['partitionDimension']
