@@ -263,6 +263,11 @@ module Dumbo
           should_compact
         end
 
+        if source['output']['numShards'] && segment_input[:segments].size != source['output']['numShards']
+          $log.info("detected segment number mismatch,", is: segment_input[:segments].size, expected: source['output']['numShards'])
+          must_compact = true
+        end
+
         @tasks << Task::CompactSegments.new(source, segment_interval) if must_compact
       end
     end
