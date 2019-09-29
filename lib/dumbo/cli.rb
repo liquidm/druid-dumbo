@@ -216,7 +216,7 @@ module Dumbo
       source = @sources[topic]
 
       segment_size = get_segment_granularity(source)
-      floor_date = [segment_size, 1.day].max
+      floor_date = segment_size
 
       $log.info("request compaction", topic: topic, interval: @interval, granularity: (source['output']['segmentGranularity'] || 'hour').downcase)
       compact_interval = [@interval[0].floor(floor_date).utc, @interval[-1].floor(floor_date).utc]
