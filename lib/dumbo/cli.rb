@@ -263,7 +263,7 @@ module Dumbo
           should_compact
         end
 
-        if source['output']['numShards'] && segment_input[:segments].size < source['output']['numShards']
+        if segment_input[:segments].size > 0 && source['output']['numShards'] && segment_input[:segments].size < source['output']['numShards']
           $log.info("detected too few segments,", is: segment_input[:segments].size, expected: source['output']['numShards'])
           must_compact = true
         end
