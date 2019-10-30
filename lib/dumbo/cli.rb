@@ -216,10 +216,10 @@ module Dumbo
       source = @sources[topic]
 
       segment_size = get_segment_granularity(source)
-      floor_date = [segment_size, 1.day].max
+      floor_date = segment_size
 
       $log.info("request compaction", topic: topic, interval: @interval, granularity: (source['output']['segmentGranularity'] || 'hour').downcase)
-      compact_interval = [@interval[0].floor(floor_date).utc, @interval[-1].ceil(floor_date).utc]
+      compact_interval = [@interval[0].floor(floor_date).utc, @interval[-1].floor(floor_date).utc]
       $log.info("compacting scan", topic: topic, interval: compact_interval)
 
       expectedMetrics = Set.new(source['metrics'].keys).add("events")
@@ -227,7 +227,7 @@ module Dumbo
 
       segment_interval = [compact_interval[0], compact_interval[0]]
       while segment_interval[-1] < compact_interval[-1] do
-        segment_interval = [segment_interval[-1], segment_interval[-1].ceil(segment_size).utc]
+        segment_interval = [segment_interval[-1].utc, (segment_interval[-1] + 1).ceil(floor_date).utc]
         $log.info("scanning segment", topic: topic, interval: segment_interval)
 
         segment_input = get_overlapping_segments_and_interval(source, segment_interval)
@@ -261,6 +261,11 @@ module Dumbo
           end
 
           should_compact
+        end
+
+        if segment_input[:segments].size > 0 && source['output']['numShards'] && segment_input[:segments].size < source['output']['numShards']
+          $log.info("detected too few segments,", is: segment_input[:segments].size, expected: source['output']['numShards'])
+          must_compact = true
         end
 
         @tasks << Task::CompactSegments.new(source, segment_interval) if must_compact
@@ -309,7 +314,10 @@ module Dumbo
 
       data << new_entry unless updated
 
-      Diplomat::Kv.put("druid-dumbo/#{service_name}", MultiJson.dump(data))
+      begin
+        Diplomat::Kv.put("druid-dumbo/#{service_name}", MultiJson.dump(data))
+      rescue
+      end
     end
   end
 end
