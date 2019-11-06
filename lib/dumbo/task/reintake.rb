@@ -50,10 +50,12 @@ module Dumbo
               ignoreInvalidRows: true,
               buildV9Directly: true,
               forceExtendableShardSpecs: true,
+              maxRowsInMemory: 10000000,
+              numBackgroundPersistThreads: 1,
               useCombiner: true,
               partitionsSpec: {
                 type: "hashed",
-                targetPartitionSize: 419430400,
+                numShards: @source['output']['numShards'] || 3,
               },
               indexSpec: {
                 bitmap: {
