@@ -24,6 +24,7 @@ module Dumbo
             # WARNING: do NOT use count for events, will count in segment vs count in raw input
           end + [{ type: "longSum", name: "events", fieldName: "events" }],
           segmentGranularity: @source['output']['segmentGranularity'] || "hour",
+          queryGranularity: @source['output']['queryGranularity'] || "hour",
           targetCompactionSizeBytes: 419430400,
           tuningConfig: {
             type: "index",
