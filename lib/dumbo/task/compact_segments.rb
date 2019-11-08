@@ -28,6 +28,7 @@ module Dumbo
           targetCompactionSizeBytes: 419430400,
           tuningConfig: {
             type: "index",
+            maxPendingPersists: 1,
             partitionDimensions: [@source['output']['partitionDimension']],
             indexSpec: {
               bitmap: {
