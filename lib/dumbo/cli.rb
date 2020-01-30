@@ -268,6 +268,11 @@ module Dumbo
           must_compact = true
         end
 
+        if segment_input[:segments].size > 0 && source['output']['maxShards'] && segment_input[:segments].size > source['output']['maxShards']
+          $log.info("detected too many segments,", is: segment_input[:segments].size, maximum: source['output']['maxShards'])
+          must_compact = true
+        end
+
         @tasks << Task::CompactSegments.new(source, segment_interval) if must_compact
       end
     end

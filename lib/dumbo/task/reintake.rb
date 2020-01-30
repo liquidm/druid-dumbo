@@ -5,28 +5,23 @@ module Dumbo
     class Reintake < Base
       def initialize(source, interval, paths)
         @source = source
-        @interval = interval
+        @interval = interval.map{|ii| ii.iso8601}.join("/")
         @paths = paths
       end
 
       def as_json(options = {})
         config = {
-          type: 'index_hadoop',
+          type: 'index_parallel',
           spec: {
             dataSchema: {
               dataSource: @source['dataSource'],
-              parser: {
-                parseSpec: {
-                  format: "json",
-                  timestampSpec: {
-                    column: ((@source['input']['timestamp'] || {})['column'] || "timestamp"),
-                    format: ((@source['input']['timestamp'] || {})['format'] || "ruby"),
-                  },
-                  dimensionsSpec: {
-                    dimensions: (@source['dimensions'] || []),
-                    spatialDimensions: (@source['spacialDimensions'] || []),
-                  }
-                }
+              timestampSpec: {
+                column: ((@source['input']['timestamp'] || {})['column'] || "timestamp"),
+                format: ((@source['input']['timestamp'] || {})['format'] || "ruby"),
+              },
+              dimensionsSpec: {
+                dimensions: (@source['dimensions'] || []),
+                spatialDimensions: (@source['spacialDimensions'] || []),
               },
               metricsSpec: (@source['metrics'] || {}).map do |name, aggregator|
                 { type: aggregator, name: name, fieldName: name }
@@ -34,26 +29,24 @@ module Dumbo
               granularitySpec: {
                 segmentGranularity: @source['output']['segmentGranularity'] || "hour",
                 queryGranularity: @source['output']['queryGranularity'] || "minute",
-                intervals: ["#{@interval.first.iso8601}/#{@interval.last.iso8601}"],
+                intervals: [@interval],
+                rollup: true,
               }
             },
             ioConfig: {
-              type: 'hadoop',
-              inputSpec: {
-                type: 'static',
+              type: 'index_parallel',
+              inputSource: {
+                type: 'hdfs',
                 paths: @paths.join(','),
               },
+              inputFormat: {
+                type: 'json'
+              }
             },
             tuningConfig: {
-              type: "hadoop",
-              overwriteFiles: true,
-              ignoreInvalidRows: true,
-              buildV9Directly: true,
-              forceExtendableShardSpecs: true,
-              useCombiner: true,
+              type: "index_parallel",
               partitionsSpec: {
-                type: "hashed",
-                targetPartitionSize: 419430400,
+                type: "dynamic"
               },
               indexSpec: {
                 bitmap: {
@@ -61,6 +54,17 @@ module Dumbo
                 },
                 longEncoding: "auto",
               },
+              indexSpecForIntermediatePersists: {
+                bitmap: {
+                  type: 'roaring',
+                  compressRunOnSerialization: false,
+                },
+                dimensionCompression: 'uncompressed',
+                metricCompression: 'none',
+                longEncoding: 'longs',
+              },
+              maxPendingPersists: 1,
+              maxNumConcurrentSubTasks: 2,
             },
           },
         }

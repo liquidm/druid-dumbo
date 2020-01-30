@@ -12,29 +12,61 @@ module Dumbo
 
       def as_json(options = {})
         config = {
-          type: 'compact',
-          dataSource: @source['dataSource'],
-          interval: @interval,
-          dimensionsSpec: {
-            dimensions: (@source['dimensions'] || []),
-            spatialDimensions: (@source['spacialDimensions'] || []),
-          },
-          metricsSpec: (@source['metrics'] || {}).map do |name, aggregator|
-            { type: aggregator, name: name, fieldName: name }
-            # WARNING: do NOT use count for events, will count in segment vs count in raw input
-          end + [{ type: "longSum", name: "events", fieldName: "events" }],
-          segmentGranularity: @source['output']['segmentGranularity'] || "hour",
-          queryGranularity: @source['output']['queryGranularity'] || "hour",
-          targetCompactionSizeBytes: 419430400,
-          tuningConfig: {
-            type: "index",
-            maxPendingPersists: 1,
-            partitionDimensions: [@source['output']['partitionDimension']],
-            indexSpec: {
-              bitmap: {
-                type: @source['output']['bitmap'] || "roaring",
+          type: 'index_parallel',
+          spec: {
+            dataSchema: {
+              dataSource: @source['dataSource'],
+              timestampSpec: {
+                column: ((@source['input']['timestamp'] || {})['column'] || "timestamp"),
+                format: ((@source['input']['timestamp'] || {})['format'] || "ruby"),
               },
-              longEncoding: "auto",
+              dimensionsSpec: {
+                dimensions: (@source['dimensions'] || []),
+                spatialDimensions: (@source['spacialDimensions'] || []),
+              },
+              metricsSpec: (@source['metrics'] || {}).map do |name, aggregator|
+                { type: aggregator, name: name, fieldName: name }
+              end + [{ type: "count", name: "events" }],
+              granularitySpec: {
+                segmentGranularity: @source['output']['segmentGranularity'] || "hour",
+                queryGranularity: @source['output']['queryGranularity'] || "minute",
+                intervals: [@interval],
+                rollup: true,
+              }
+            },
+            ioConfig: {
+              type: 'index_parallel',
+              inputSource: {
+                type: 'druid',
+                dataSource: @source['dataSource'],
+                interval: @interval,
+              }
+            },
+            tuningConfig: {
+              type: "index_parallel",
+              partitionsSpec: {
+                type: "hashed",
+                numShards: @source['output']['numShards'] || 4,
+                partitionDimensions:  @source['output']['partitionDimensions'],
+              },
+              indexSpec: {
+                bitmap: {
+                  type: @source['output']['bitmap'] || "roaring",
+                },
+                longEncoding: "auto",
+              },
+              indexSpecForIntermediatePersists: {
+                bitmap: {
+                  type: 'roaring',
+                  compressRunOnSerialization: false,
+                },
+                dimensionCompression: 'uncompressed',
+                metricCompression: 'none',
+                longEncoding: 'longs',
+              },
+              maxPendingPersists: 1,
+              maxNumConcurrentSubTasks: 2,
+              forceGuaranteedRollup: true
             },
           },
         }
