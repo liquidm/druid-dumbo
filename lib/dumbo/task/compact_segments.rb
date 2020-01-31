@@ -26,7 +26,8 @@ module Dumbo
               },
               metricsSpec: (@source['metrics'] || {}).map do |name, aggregator|
                 { type: aggregator, name: name, fieldName: name }
-              end + [{ type: "count", name: "events" }],
+                # WARNING: do NOT use count for events, will count in segment vs count in raw input
+              end + [{ type: "longSum", name: "events", fieldName: "events" }],
               granularitySpec: {
                 segmentGranularity: @source['output']['segmentGranularity'] || "hour",
                 queryGranularity: @source['output']['queryGranularity'] || "minute",
