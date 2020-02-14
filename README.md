@@ -14,12 +14,15 @@ Usage: bin/dumbo (options)
     -D, --debug                      Enable debug output
     -N, --dryrun                     do not submit tasks to overlord (dry-run)
     -e, --environment ENVIRONMENT    Set the daemon environment
+        --force                      force segment generation regardless of state
+    -i, --interval INTERVAL          force an explicit interval
     -l, --limit LIMIT                limit the number of tasks to spawn (defaults to unlimited)
-    -m, --mode MODE                  mode to perform (verify, compact, unshard)
+    -m, --mode MODE                  mode to perform (verify, merge, compact)
         --name NAME                  Process name
     -n, --namenodes LIST             HDFS namenodes (comma seperated), defaults to "localhost"
-        --offset HOURS               offset from now used as interval end, defaults to 3 hours
+    -f, --offset HOURS               offset from now used as interval end, defaults to 2 hours
     -o, --overlord HOST[:PORT]       overlord hostname and port, defaults to "localhost:8090"
+    -r, --reverse BOOL               run jobs in reverse order
     -s, --sources PATH               path to sources config (required)
     -t, --topics LIST                Topics to process (comma seperated), defaults to all in sources.json
     -w, --window HOURS               scan window in hours, defaults to 24 hours
