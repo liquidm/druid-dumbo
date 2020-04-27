@@ -46,9 +46,7 @@ module Dumbo
             tuningConfig: {
               type: "index_parallel",
               partitionsSpec: {
-                type: "hashed",
-                numShards: @source['output']['numShards'] || 4,
-                partitionDimensions:  @source['output']['partitionDimensions'],
+                type: "dynamic"
               },
               indexSpec: {
                 bitmap: {
@@ -65,9 +63,9 @@ module Dumbo
                 metricCompression: 'none',
                 longEncoding: 'longs',
               },
-              maxPendingPersists: 1,
-              maxNumConcurrentSubTasks: 2,
-              forceGuaranteedRollup: true
+              maxPendingPersists: 3,
+              maxNumConcurrentSubTasks: 12,
+              forceGuaranteedRollup: false
             },
           },
         }
