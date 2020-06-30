@@ -63,7 +63,7 @@ module Dumbo
                 metricCompression: 'none',
                 longEncoding: 'longs',
               },
-              maxPendingPersists: 3,
+              maxPendingPersists: 0,
               maxNumConcurrentSubTasks: 12,
               forceGuaranteedRollup: false
             },
