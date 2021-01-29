@@ -14,6 +14,7 @@ require 'dumbo/segment'
 require 'dumbo/firehose/hdfs'
 require 'dumbo/task/reintake'
 require 'dumbo/task/compact_segments'
+require 'dumbo/task/copy'
 
 $log.mute!
 
@@ -92,7 +93,7 @@ module Dumbo
       @topics = opts[:topics] || @sources.keys
       @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
       @interval = [(Time.now-14.day).floor(1.day).utc, (Time.now - 2.hours).floor(1.hour).utc]
-      @segments = Dumbo::Segment.all(@db, @druid, @sources)
+      @segments = Dumbo::Segment.all(@db, @druid, Dumbo::Segment.json_to_source(@sources))
       @topics.each do |topic|
         validate_events(topic)
       end

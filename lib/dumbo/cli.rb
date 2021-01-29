@@ -7,6 +7,7 @@ require 'dumbo/segment'
 require 'dumbo/firehose/hdfs'
 require 'dumbo/task/reintake'
 require 'dumbo/task/compact_segments'
+require 'dumbo/task/copy'
 require 'dumbo/overlord_scanner'
 
 module Dumbo
@@ -14,7 +15,7 @@ module Dumbo
     def initialize
       $log.info("scan", window: opts[:window])
       @db = Sequel.connect(MultiJson.load(File.read(opts[:database])))
-      @druid = Druid::Client.new(opts[:zookeeper], { :discovery_path  => opts[:zookeeper_path]})
+      @druid = Druid::Client.new(opts[:zookeeper], {:discovery_path => opts[:zookeeper_path]})
       @service_name = opts[:sources].split("/").last.split(".").first
       @sources = MultiJson.load(File.read(opts[:sources]))
       @sources.each do |source_name, source|
@@ -23,26 +24,51 @@ module Dumbo
       end
       @topics = opts[:topics] || @sources.keys
       @hdfs = Firehose::HDFS.new(opts[:namenodes], @sources)
-      @interval = opts[:forced_interval] || [((Time.now.utc-(opts[:window] + opts[:offset]).hours).floor).utc, (Time.now.utc-opts[:offset].hour).floor(1.hour).utc]
+      @interval = opts[:forced_interval] || [((Time.now.utc - (opts[:window] + opts[:offset]).hours).floor).utc, (Time.now.utc - opts[:offset].hour).floor(1.hour).utc]
       @tasks = []
       @limit = opts[:limit]
       @forced = opts[:force]
       @reverse = opts[:reverse]
       @overlord_scanner = OverlordScanner.new(opts[:overlord])
+      @target = opts[:target]
     end
 
     def run
       case opts[:mode]
       when "verify"
         $log.info("validating events from HDFS")
-        @segments = Dumbo::Segment.all(@db, @druid, @sources)
+        @segments = Dumbo::Segment.all(@db, @druid, Dumbo::Segment.json_to_source(@sources))
         @topics.each do |topic|
           validate_events(topic)
         end
         run_tasks
+
+      when "copy"
+        if @sources == nil || @target == ""
+          $log.error("copy-source and copy-target arguments are required for copy mode")
+          return
+        end
+
+        @sources.each do |source_array|
+          source = source_array[1]
+          source_path = source.keys.first
+          target_path = @target
+
+          source_name = source_path.split("/")[1]
+          target_name = target_path.split("/")[1]
+
+          source_config = source[source_path]
+          interval = source_config["interval"].map { |t| Time.parse(t) }
+
+          $log.info("copying segments from: #{source_path} to #{target_path} #{interval.join("/")}")
+
+          @tasks << Task::Copy.new(source_config, interval, source_name, target_name)
+        end
+
+        run_tasks
       when "compact"
         $log.info("compacting segments")
-        @segments = Dumbo::Segment.all(@db, @druid, @sources)
+        @segments = Dumbo::Segment.all(@db, @druid, Dumbo::Segment.json_to_source(@sources))
         @topics.each do |topic|
           compact_segments(topic)
         end
@@ -62,7 +88,7 @@ module Dumbo
 
       if @limit > 0 && @tasks.length > @limit
         $log.info("Limiting task execution,", actually: @tasks.length, limit: @limit)
-        @tasks = @tasks[0,@limit]
+        @tasks = @tasks[0, @limit]
       end
 
       @tasks.each do |task|
@@ -107,7 +133,7 @@ module Dumbo
         @hdfs.slots(source_name, @interval).each_with_index do |slot, ii|
           next if slot.events < 1
           next unless lag_check.all? do |required_path|
-            slot.paths.any? {|existing_path| existing_path.start_with?(required_path) }
+            slot.paths.any? { |existing_path| existing_path.start_with?(required_path) }
           end
           last_non_lagging_slot = slot.time - 1.hour
         end
@@ -126,12 +152,12 @@ module Dumbo
 
         segments = @segments.select do |s|
           s.source == source['dataSource'] &&
-          s.interval.first <= slot.time &&
-          s.interval.last > slot.time
+            s.interval.first <= slot.time &&
+            s.interval.last > slot.time
         end
 
         segment = segments.first
-        segment_events = segment.events!(source['service'], [slot.time, slot.time+1.hour]) if segment
+        segment_events = segment.events!(source['service'], [slot.time, slot.time + 1.hour]) if segment
         rebuild = false
 
         currentMetrics = Set.new(segments.map(&:metrics).flatten)
@@ -158,11 +184,11 @@ module Dumbo
         elsif currentDimensions > expectedDimensions
           $log.info("found deleted dimensions", for: slot.time, delta: (currentDimensions - expectedDimensions).to_a)
           rebuild = true
-        #todo column check was buggy so it has been disabled see releted commit
+          #todo column check was buggy so it has been disabled see releted commit
         end
 
         next unless rebuild
-        @tasks << Task::Reintake.new(source, [slot.time, slot.time+1.hour], slot.patterns)
+        @tasks << Task::Reintake.new(source, [slot.time, slot.time + 1.hour], slot.patterns)
       end
     end
 
