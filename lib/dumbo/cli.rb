@@ -50,10 +50,15 @@ module Dumbo
           return
         end
 
-        require 'pry'; binding.pry
 
-        @source_segments = Dumbo::Segment.all(@db, @druid, @copy_source )
-        @target_segments = Dumbo::Segment.all(@db, @druid, @copy_target)
+		@source_segments = Dumbo::Segment.all!(@db, @druid, @copy_source).each do ||
+			@target_segments_hash = Dumbo::Segment.all!(@db, @druid, @copy_target).map do |target| 
+				[target.interval, target]
+			end.to_h
+
+
+
+		end
 
         require 'pry'; binding.pry
       when "compact"
