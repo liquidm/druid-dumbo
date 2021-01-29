@@ -2,14 +2,16 @@ require 'multi_json'
 
 module Dumbo
   class Segment
-    def self.all(db, druid, sources)
-      @all ||= all!(db, druid, sources)
+    def self.json_to_source(sources)
+      sources.values.map { |s| s['dataSource'] }
     end
 
-    def self.all!(db, druid, sources)
-      datasources = sources.values.map { |s| s['dataSource']}
+    def self.all(db, druid, source)
+      @all ||= all!(db, druid, source)
+    end
 
-      segments = db[:druid_segments].where(used: true, datasource: datasources).map do |row|
+    def self.all!(db, druid, source)
+      segments = db[:druid_segments].where(used: true, datasource: source).map do |row|
         new(MultiJson.load(row[:payload]), druid)
       end
 
@@ -34,10 +36,10 @@ module Dumbo
     def events!(broker, interval = nil)
       interval ||= @interval
       query = Druid::Query::Builder.new
-        .timeseries
-        .long_sum('events')
-        .granularity(:all)
-        .interval(interval.first, interval.last)
+                  .timeseries
+                  .long_sum('events')
+                  .granularity(:all)
+                  .interval(interval.first, interval.last)
 
       ds = nil
       while ds.nil?
@@ -54,8 +56,8 @@ module Dumbo
     def metadata!(broker, interval = nil)
       interval ||= @interval
       query = Druid::Query::Builder.new
-        .metadata
-        .interval(interval.first, interval.last)
+                  .metadata
+                  .interval(interval.first, interval.last)
 
       ds = nil
       while ds.nil?
@@ -68,11 +70,11 @@ module Dumbo
         $log.warn("Druid failed with #{e}")
         # so far only in verify, this return value will cause a reimport
         {
-          'columns' => {
-            '__time': {
-              'type' => false
+            'columns' => {
+                '__time': {
+                    'type' => false
+                }
             }
-          }
         }
       end
     end
