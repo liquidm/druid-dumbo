@@ -45,6 +45,7 @@ module Dumbo
             },
             tuningConfig: {
               type: "index_parallel",
+			  maxRowsInMemory: 50000000,
               partitionsSpec: {
                 type: "hashed",
                 numShards: @source['output']['numShards'] || 4,
@@ -65,8 +66,9 @@ module Dumbo
                 metricCompression: 'none',
                 longEncoding: 'longs',
               },
-              maxPendingPersists: 1,
-              maxNumConcurrentSubTasks: 2,
+              maxPendingPersists: 2,
+              maxNumConcurrentSubTasks: 20,
+			  totalNumMergeTasks: 20,
               forceGuaranteedRollup: true
             },
           },

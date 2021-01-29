@@ -29,6 +29,8 @@ module Dumbo
       @forced = opts[:force]
       @reverse = opts[:reverse]
       @overlord_scanner = OverlordScanner.new(opts[:overlord])
+	  @copy_source = opts[:copy_source]
+	  @copy_target = opts[:copy_target]
     end
 
     def run
@@ -40,6 +42,21 @@ module Dumbo
           validate_events(topic)
         end
         run_tasks
+
+	  when "copy"
+		  $log.info("copying segments")
+		  if @copy_source == "" || @copy_target == "" 
+			  $log.error("copy-source and copy-target arguments are required for copy mode")
+			  return
+		  end
+
+		  require 'pry'; binding.pry
+
+
+        @source_segments = Dumbo::Segment.all(@db, @druid, {data_sources:@copy_source)
+        @target_segments = Dumbo::Segment.all(@db, @druid, [@copy_target])
+
+		  require 'pry'; binding.pry
       when "compact"
         $log.info("compacting segments")
         @segments = Dumbo::Segment.all(@db, @druid, @sources)

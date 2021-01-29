@@ -115,6 +115,14 @@ CLI.for(Dumbo::CLI) do
   option :force,
     :long => '--force',
     :description => 'force segment generation regardless of state'
+  option :copy_source, 
+    :long => "--copy-source SOURCE",
+    :description => 'source to copy from',
+    :default => ""
+  option :copy_target, 
+    :long => "--copy-target TARGET",
+    :description => 'target to copy to',
+    :default => ""
 
 end.run
 
