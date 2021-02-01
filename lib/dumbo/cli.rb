@@ -51,13 +51,32 @@ module Dumbo
         end
 
         service = @sources[@sources.keys.first]["service"]
+        hdfs_path = @sources[@sources.keys.first]["input"]["gobblin"]
 
         @target_segments_hash = Dumbo::Segment.all!(@db, @druid, @copy_target).map do |target|
           [target.interval, target]
         end.to_h
 
+        segments_to_copy = []
+
         @source_segments = Dumbo::Segment.all!(@db, @druid, @copy_source).each do |source_segment|
-          exists = compare_druid_segments(source_segment, @target_segments_hash[source_segment.interval], service)
+          if !compare_druid_segments(source_segment, @target_segments_hash[source_segment.interval], service)
+            segments_to_copy << source_segment
+          end
+        end
+
+        jobs = []
+
+        segments_to_copy.each do |segment|
+          start_date = segment.interval.first
+          pattern = ""
+          if segment.interval.last - start_date == 3600
+            pattern = "#{hdfs_path}/#{start_date.strftime('%Y/%m/%d/%k')}/*.gz"
+          elsif segment.interval.last - start_date == 3600*24
+            pattern = "#{hdfs_path}/#{start_date.strftime('%Y/%m/%d')}/*/*.gz"
+          end
+
+          jobs << Task::Reintake.new(segment, segment.interval, pattern)
         end
 
         require 'pry'; binding.pry
@@ -117,248 +136,248 @@ module Dumbo
 
       end
     end
-  end
 
-  def validate_events(source_name)
-    $log.info("validating events for", source: source_name)
+    def validate_events(source_name)
+      $log.info("validating events for", source: source_name)
 
-    source = @sources[source_name]
+      source = @sources[source_name]
 
-    expectedMetrics = Set.new(source['metrics'].keys).add("events")
-    expectedDimensions = Set.new(source['dimensions'])
+      expectedMetrics = Set.new(source['metrics'].keys).add("events")
+      expectedDimensions = Set.new(source['dimensions'])
 
-    validation_interval = @interval
-    if source['input']['epoc']
-      epoc = Time.parse(source['input']['epoc'])
-      if epoc > validation_interval[0]
-        $log.info("shortening interval due to epoc,", requested: validation_interval[0], epoc: epoc)
-        validation_interval[0] = epoc
-      end
-    end
-
-    lag_check = [source['input']['gobblin']].flatten.compact.uniq
-    if lag_check.size > 0
-      last_non_lagging_slot = validation_interval[0]
-
-      $log.info("checking for lag on", paths: lag_check)
-      @hdfs.slots(source_name, @interval).each_with_index do |slot, ii|
-        next if slot.events < 1
-        next unless lag_check.all? do |required_path|
-          slot.paths.any? { |existing_path| existing_path.start_with?(required_path) }
+      validation_interval = @interval
+      if source['input']['epoc']
+        epoc = Time.parse(source['input']['epoc'])
+        if epoc > validation_interval[0]
+          $log.info("shortening interval due to epoc,", requested: validation_interval[0], epoc: epoc)
+          validation_interval[0] = epoc
         end
-        last_non_lagging_slot = slot.time - 1.hour
       end
 
-      if last_non_lagging_slot != validation_interval[1]
-        $log.info("last non lagging slot is #{last_non_lagging_slot}")
-        validation_interval[1] = last_non_lagging_slot
+      lag_check = [source['input']['gobblin']].flatten.compact.uniq
+      if lag_check.size > 0
+        last_non_lagging_slot = validation_interval[0]
+
+        $log.info("checking for lag on", paths: lag_check)
+        @hdfs.slots(source_name, @interval).each_with_index do |slot, ii|
+          next if slot.events < 1
+          next unless lag_check.all? do |required_path|
+            slot.paths.any? { |existing_path| existing_path.start_with?(required_path) }
+          end
+          last_non_lagging_slot = slot.time - 1.hour
+        end
+
+        if last_non_lagging_slot != validation_interval[1]
+          $log.info("last non lagging slot is #{last_non_lagging_slot}")
+          validation_interval[1] = last_non_lagging_slot
+        end
+      end
+
+      @hdfs.slots(source_name, validation_interval).each do |slot|
+        if slot.paths.length < 1 || slot.events < 1
+          $log.info("skipping segments w/o raw data", slot: slot.time)
+          next
+        end
+
+        segments = @segments.select do |s|
+          s.source == source['dataSource'] &&
+              s.interval.first <= slot.time &&
+              s.interval.last > slot.time
+        end
+
+        segment = segments.first
+        segment_events = segment.events!(source['service'], [slot.time, slot.time + 1.hour]) if segment
+        rebuild = false
+
+        currentMetrics = Set.new(segments.map(&:metrics).flatten)
+        currentDimensions = Set.new(segments.map(&:dimensions))
+
+        if @forced
+          $log.info("force rebuild segment for", slot: slot.time)
+          rebuild = true
+        elsif !segment
+          $log.info("found missing segment for", slot: slot.time)
+          rebuild = true
+        elsif segment_events != slot.events
+          $log.info("event mismatch", for: slot.time, delta: slot.events - segment_events, hdfs: slot.events, segment: segment_events)
+          rebuild = true
+        elsif currentMetrics < expectedMetrics
+          $log.info("found new metrics", for: slot.time, delta: (expectedMetrics - currentMetrics).to_a)
+          rebuild = true
+        elsif currentMetrics > expectedMetrics
+          $log.info("found deleted metrics", for: slot.time, delta: (currentMetrics - expectedMetrics).to_a)
+          rebuild = true
+        elsif currentDimensions < expectedDimensions
+          $log.info("found new dimensions", for: slot.time, delta: (expectedDimensions - currentDimensions).to_a)
+          rebuild = true
+        elsif currentDimensions > expectedDimensions
+          $log.info("found deleted dimensions", for: slot.time, delta: (currentDimensions - expectedDimensions).to_a)
+          rebuild = true
+          #todo column check was buggy so it has been disabled see releted commit
+        end
+
+        next unless rebuild
+        @tasks << Task::Reintake.new(source, [slot.time, slot.time + 1.hour], slot.patterns)
       end
     end
 
-    @hdfs.slots(source_name, validation_interval).each do |slot|
-      if slot.paths.length < 1 || slot.events < 1
-        $log.info("skipping segments w/o raw data", slot: slot.time)
-        next
+    def get_overlapping_segments_and_interval(source, check_interval, available_segments = @segments)
+      dataSource = source['dataSource']
+
+      oldest = check_interval.first
+      newest = check_interval.last
+
+      check_range = (oldest...newest)
+
+      segments = available_segments.select do |segment|
+        if segment.source == dataSource && (segment.interval[0]...segment.interval[-1]).overlaps?(check_range)
+          oldest = [oldest, segment.interval[0]].min
+          newest = [newest, segment.interval[-1]].max
+          true
+        else
+          false
+        end
       end
 
-      segments = @segments.select do |s|
-        s.source == source['dataSource'] &&
-            s.interval.first <= slot.time &&
-            s.interval.last > slot.time
-      end
-
-      segment = segments.first
-      segment_events = segment.events!(source['service'], [slot.time, slot.time + 1.hour]) if segment
-      rebuild = false
-
-      currentMetrics = Set.new(segments.map(&:metrics).flatten)
-      currentDimensions = Set.new(segments.map(&:dimensions))
-
-      if @forced
-        $log.info("force rebuild segment for", slot: slot.time)
-        rebuild = true
-      elsif !segment
-        $log.info("found missing segment for", slot: slot.time)
-        rebuild = true
-      elsif segment_events != slot.events
-        $log.info("event mismatch", for: slot.time, delta: slot.events - segment_events, hdfs: slot.events, segment: segment_events)
-        rebuild = true
-      elsif currentMetrics < expectedMetrics
-        $log.info("found new metrics", for: slot.time, delta: (expectedMetrics - currentMetrics).to_a)
-        rebuild = true
-      elsif currentMetrics > expectedMetrics
-        $log.info("found deleted metrics", for: slot.time, delta: (currentMetrics - expectedMetrics).to_a)
-        rebuild = true
-      elsif currentDimensions < expectedDimensions
-        $log.info("found new dimensions", for: slot.time, delta: (expectedDimensions - currentDimensions).to_a)
-        rebuild = true
-      elsif currentDimensions > expectedDimensions
-        $log.info("found deleted dimensions", for: slot.time, delta: (currentDimensions - expectedDimensions).to_a)
-        rebuild = true
-        #todo column check was buggy so it has been disabled see releted commit
-      end
-
-      next unless rebuild
-      @tasks << Task::Reintake.new(source, [slot.time, slot.time + 1.hour], slot.patterns)
+      return {
+          dataSource: dataSource,
+          interval: [oldest, newest],
+          segments: segments
+      }
     end
-  end
 
-  def get_overlapping_segments_and_interval(source, check_interval, available_segments = @segments)
-    dataSource = source['dataSource']
-
-    oldest = check_interval.first
-    newest = check_interval.last
-
-    check_range = (oldest...newest)
-
-    segments = available_segments.select do |segment|
-      if segment.source == dataSource && (segment.interval[0]...segment.interval[-1]).overlaps?(check_range)
-        oldest = [oldest, segment.interval[0]].min
-        newest = [newest, segment.interval[-1]].max
-        true
+    def get_segment_granularity(source)
+      case (source['output']['segmentGranularity'] || 'hour').downcase
+      when 'fifteen_minute'
+        15.minutes
+      when 'thirty_minute'
+        30.minutes
+      when 'hour'
+        1.hour
+      when 'day'
+        1.day
+      when 'week'
+        7.days
+      when 'month'
+        1.month
+      when 'year'
+        1.year
       else
-        false
+        raise "Unsupported segmentGranularity #{source['output']['segmentGranularity']}"
       end
     end
 
-    return {
-        dataSource: dataSource,
-        interval: [oldest, newest],
-        segments: segments
-    }
-  end
+    def compact_segments(topic)
+      source = @sources[topic]
 
-  def get_segment_granularity(source)
-    case (source['output']['segmentGranularity'] || 'hour').downcase
-    when 'fifteen_minute'
-      15.minutes
-    when 'thirty_minute'
-      30.minutes
-    when 'hour'
-      1.hour
-    when 'day'
-      1.day
-    when 'week'
-      7.days
-    when 'month'
-      1.month
-    when 'year'
-      1.year
-    else
-      raise "Unsupported segmentGranularity #{source['output']['segmentGranularity']}"
-    end
-  end
+      segment_size = get_segment_granularity(source)
+      floor_date = segment_size
 
-  def compact_segments(topic)
-    source = @sources[topic]
+      $log.info("request compaction", topic: topic, interval: @interval, granularity: (source['output']['segmentGranularity'] || 'hour').downcase)
+      compact_interval = [@interval[0].floor(floor_date).utc, @interval[-1].floor(floor_date).utc]
+      $log.info("compacting scan", topic: topic, interval: compact_interval)
 
-    segment_size = get_segment_granularity(source)
-    floor_date = segment_size
+      expectedMetrics = Set.new(source['metrics'].keys).add("events")
+      expectedDimensions = Set.new(source['dimensions'])
 
-    $log.info("request compaction", topic: topic, interval: @interval, granularity: (source['output']['segmentGranularity'] || 'hour').downcase)
-    compact_interval = [@interval[0].floor(floor_date).utc, @interval[-1].floor(floor_date).utc]
-    $log.info("compacting scan", topic: topic, interval: compact_interval)
+      segment_interval = [compact_interval[0], compact_interval[0]]
+      while segment_interval[-1] < compact_interval[-1] do
+        segment_interval = [segment_interval[-1].utc, (segment_interval[-1] + 1).ceil(floor_date).utc]
+        $log.info("scanning segment", topic: topic, interval: segment_interval)
 
-    expectedMetrics = Set.new(source['metrics'].keys).add("events")
-    expectedDimensions = Set.new(source['dimensions'])
+        segment_input = get_overlapping_segments_and_interval(source, segment_interval)
 
-    segment_interval = [compact_interval[0], compact_interval[0]]
-    while segment_interval[-1] < compact_interval[-1] do
-      segment_interval = [segment_interval[-1].utc, (segment_interval[-1] + 1).ceil(floor_date).utc]
-      $log.info("scanning segment", topic: topic, interval: segment_interval)
+        must_compact = segment_input[:segments].any? do |input_segment|
+          should_compact = false
 
-      segment_input = get_overlapping_segments_and_interval(source, segment_interval)
+          currentMetrics = Set.new(input_segment.metrics)
+          if currentMetrics != expectedMetrics
+            possibleMetrics = currentMetrics & expectedMetrics
 
-      must_compact = segment_input[:segments].any? do |input_segment|
-        should_compact = false
+            if possibleMetrics <= expectedMetrics && possibleMetrics != currentMetrics
+              $log.info("detected a possible metrics reduction")
+              should_compact = true
+            end
+          end
 
-        currentMetrics = Set.new(input_segment.metrics)
-        if currentMetrics != expectedMetrics
-          possibleMetrics = currentMetrics & expectedMetrics
+          currentDimensions = Set.new(input_segment.dimensions)
+          if currentDimensions != expectedDimensions
+            possibleDimensions = currentDimensions & expectedDimensions
 
-          if possibleMetrics <= expectedMetrics && possibleMetrics != currentMetrics
-            $log.info("detected a possible metrics reduction")
+            if possibleDimensions <= expectedDimensions && possibleDimensions != currentDimensions
+              $log.info("detected a possible dimensions reduction")
+              should_compact = true
+            end
+          end
+
+          if input_segment.interval.first > segment_interval.first && input_segment.interval.last < segment_interval.last
+            $log.info("detected too small segment size,", is: input_segment.interval, expected: segment_interval)
             should_compact = true
           end
+
+          should_compact
         end
 
-        currentDimensions = Set.new(input_segment.dimensions)
-        if currentDimensions != expectedDimensions
-          possibleDimensions = currentDimensions & expectedDimensions
-
-          if possibleDimensions <= expectedDimensions && possibleDimensions != currentDimensions
-            $log.info("detected a possible dimensions reduction")
-            should_compact = true
-          end
+        if segment_input[:segments].size > 0 && source['output']['numShards'] && segment_input[:segments].size < source['output']['numShards']
+          $log.info("detected too few segments,", is: segment_input[:segments].size, expected: source['output']['numShards'])
+          must_compact = true
         end
 
-        if input_segment.interval.first > segment_interval.first && input_segment.interval.last < segment_interval.last
-          $log.info("detected too small segment size,", is: input_segment.interval, expected: segment_interval)
-          should_compact = true
+        if segment_input[:segments].size > 0 && source['output']['maxShards'] && segment_input[:segments].size > source['output']['maxShards']
+          $log.info("detected too many segments,", is: segment_input[:segments].size, maximum: source['output']['maxShards'])
+          must_compact = true
         end
 
-        should_compact
-      end
-
-      if segment_input[:segments].size > 0 && source['output']['numShards'] && segment_input[:segments].size < source['output']['numShards']
-        $log.info("detected too few segments,", is: segment_input[:segments].size, expected: source['output']['numShards'])
-        must_compact = true
-      end
-
-      if segment_input[:segments].size > 0 && source['output']['maxShards'] && segment_input[:segments].size > source['output']['maxShards']
-        $log.info("detected too many segments,", is: segment_input[:segments].size, maximum: source['output']['maxShards'])
-        must_compact = true
-      end
-
-      @tasks << Task::CompactSegments.new(source, segment_interval) if must_compact
-    end
-  end
-
-  def granularity(g)
-    case g.downcase
-    when 'minute'
-      1.minutes
-    when 'fifteen_minute'
-      15.minutes
-    when 'thirty_minute'
-      30.minutes
-    when 'hour'
-      1.hour
-    else
-      raise "Unsupported granularity #{g}"
-    end
-  end
-
-  def log_tasks_number service_name, number
-    data = []
-    begin
-      data = MultiJson.load(Diplomat::Kv.get("druid-dumbo/#{service_name}"))
-    rescue
-    end
-
-    now = Time.now
-    current_day = Time.utc(now.year, now.month, now.day, 0, 0, 0)
-
-    new_entry = {"tasks" => number, "ts" => current_day.to_s}
-
-    if data.length > 10
-      data = data[1..10]
-    end
-
-    updated = false
-
-    data.each do |entry|
-      if entry["ts"] == current_day.to_s
-        entry["tasks"] = [entry["tasks"], new_entry["tasks"]].min
-        updated = true
+        @tasks << Task::CompactSegments.new(source, segment_interval) if must_compact
       end
     end
 
-    data << new_entry unless updated
+    def granularity(g)
+      case g.downcase
+      when 'minute'
+        1.minutes
+      when 'fifteen_minute'
+        15.minutes
+      when 'thirty_minute'
+        30.minutes
+      when 'hour'
+        1.hour
+      else
+        raise "Unsupported granularity #{g}"
+      end
+    end
 
-    begin
-      Diplomat::Kv.put("druid-dumbo/#{service_name}", MultiJson.dump(data))
-    rescue
+    def log_tasks_number service_name, number
+      data = []
+      begin
+        data = MultiJson.load(Diplomat::Kv.get("druid-dumbo/#{service_name}"))
+      rescue
+      end
+
+      now = Time.now
+      current_day = Time.utc(now.year, now.month, now.day, 0, 0, 0)
+
+      new_entry = {"tasks" => number, "ts" => current_day.to_s}
+
+      if data.length > 10
+        data = data[1..10]
+      end
+
+      updated = false
+
+      data.each do |entry|
+        if entry["ts"] == current_day.to_s
+          entry["tasks"] = [entry["tasks"], new_entry["tasks"]].min
+          updated = true
+        end
+      end
+
+      data << new_entry unless updated
+
+      begin
+        Diplomat::Kv.put("druid-dumbo/#{service_name}", MultiJson.dump(data))
+      rescue
+      end
     end
   end
 end
