@@ -29,8 +29,7 @@ module Dumbo
       @forced = opts[:force]
       @reverse = opts[:reverse]
       @overlord_scanner = OverlordScanner.new(opts[:overlord])
-      @copy_source = opts[:copy_source]
-      @copy_target = opts[:copy_target]
+      @target = opts[:target]
     end
 
     def run
@@ -44,23 +43,32 @@ module Dumbo
         run_tasks
 
       when "copy"
-        $log.info("copying segments")
-        if @copy_source == "" || @copy_target == ""
+        if @sources == nil || @target == ""
           $log.error("copy-source and copy-target arguments are required for copy mode")
           return
         end
 
-        service = @sources[@sources.keys.first]["service"]
-        hdfs_path = @sources[@sources.keys.first]["input"]["gobblin"]
+        source_path = @sources.keys.first
+        target_path = @target
 
-        @target_segments_hash = Dumbo::Segment.all!(@db, @druid, @copy_target).map do |target|
-          [target.interval, target]
+        # source_folder = source_path.split("/")[0]
+        # target_folder = source_path.split("/")[0]
+        # source_name = source_path.split("/")[1]
+        # target_name = source_path.split("/")[1]
+
+        source_config = @sources[source_path]
+        service = source_config["service"]
+
+        $log.info("copying segments from: #{source_path} to #{target_path}")
+
+        target_segments_hash = Dumbo::Segment.all!(@db, @druid, target_path).map do |target_segment|
+          [target_segment.interval, target_segment]
         end.to_h
 
         segments_to_copy = []
 
-        @source_segments = Dumbo::Segment.all!(@db, @druid, @copy_source).each do |source_segment|
-          if !compare_druid_segments(source_segment, @target_segments_hash[source_segment.interval], service)
+        Dumbo::Segment.all!(@db, @druid, source_path).each do |source_segment|
+          unless matching_druid_segments(source_segment, target_segments_hash[source_segment.interval], service)
             segments_to_copy << source_segment
           end
         end
@@ -68,15 +76,7 @@ module Dumbo
         jobs = []
 
         segments_to_copy.each do |segment|
-          start_date = segment.interval.first
-          pattern = ""
-          if segment.interval.last - start_date == 3600
-            pattern = "#{hdfs_path}/#{start_date.strftime('%Y/%m/%d/%k')}/*.gz"
-          elsif segment.interval.last - start_date == 3600*24
-            pattern = "#{hdfs_path}/#{start_date.strftime('%Y/%m/%d')}/*/*.gz"
-          end
-
-          jobs << Task::Reintake.new(segment, segment.interval, pattern)
+          jobs << Task::Copy.new(source_config, segment.interval)
         end
 
         require 'pry'; binding.pry
@@ -122,7 +122,7 @@ module Dumbo
       end
     end
 
-    def compare_druid_segments(source_segment, target_segment, service)
+    def matching_druid_segments(source_segment, target_segment, service)
       if !target_segment
         return false
       end
@@ -181,8 +181,8 @@ module Dumbo
 
         segments = @segments.select do |s|
           s.source == source['dataSource'] &&
-              s.interval.first <= slot.time &&
-              s.interval.last > slot.time
+            s.interval.first <= slot.time &&
+            s.interval.last > slot.time
         end
 
         segment = segments.first
@@ -240,9 +240,9 @@ module Dumbo
       end
 
       return {
-          dataSource: dataSource,
-          interval: [oldest, newest],
-          segments: segments
+        dataSource: dataSource,
+        interval: [oldest, newest],
+        segments: segments
       }
     end
 
