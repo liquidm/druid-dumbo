@@ -57,11 +57,11 @@ module Dumbo
         # source_name = source_path.split("/")[1]
         # target_name = source_path.split("/")[1]
         #
-        source['service'] = source_path.split("/")[0]
-        source['dataSource'] = source_path.split("/")[0]
-        source['dataTargetSource'] = target_path.split("/")[1]
 
         source_config = @sources[source_path]
+        source_config['service'] = source_path.split("/")[0]
+        source_config['dataSource'] = source_path.split("/")[0]
+        source_config['dataTargetSource'] = target_path.split("/")[1]
         service = source_config["service"]
 
         $log.info("copying segments from: #{source_path} to #{target_path}")
