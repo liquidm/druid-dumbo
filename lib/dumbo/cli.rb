@@ -7,6 +7,7 @@ require 'dumbo/segment'
 require 'dumbo/firehose/hdfs'
 require 'dumbo/task/reintake'
 require 'dumbo/task/compact_segments'
+require 'dumbo/task/copy'
 require 'dumbo/overlord_scanner'
 
 module Dumbo
