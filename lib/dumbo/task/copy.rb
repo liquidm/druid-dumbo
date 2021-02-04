@@ -3,11 +3,13 @@ require 'dumbo/task/base'
 module Dumbo
   module Task
     class Copy < Base
-      def initialize(source, interval)
+      def initialize(source, interval, input_source, target_source)
         @source = source
         @source['input'] ||= {}
         @source['input']['timestamp'] ||= {}
         @interval = interval.map { |ii| ii.iso8601 }.join("/")
+        @input_source = input_source
+        @target_source = target_source
       end
 
       def as_json(options = {})
@@ -15,7 +17,7 @@ module Dumbo
             type: 'index_parallel',
             spec: {
                 dataSchema: {
-                    dataSource: @source['dataTargetSource'],
+                    dataSource: @target_source,
                     timestampSpec: {
                         column: ((@source['input']['timestamp'] || {})['column'] || "timestamp"),
                         format: ((@source['input']['timestamp'] || {})['format'] || "ruby"),
@@ -39,7 +41,7 @@ module Dumbo
                     type: 'index_parallel',
                     inputSource: {
                         type: 'druid',
-                        dataSource: @source['dataSource'],
+                        dataSource: @input_source,
                         interval: @interval,
                     }
                 },
