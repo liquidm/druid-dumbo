@@ -2,7 +2,7 @@ require 'dumbo/task/base'
 
 module Dumbo
   module Task
-    class CompactSegments < Base
+    class Copy < Base
       def initialize(source, interval)
         @source = source
         @source['input'] ||= {}
