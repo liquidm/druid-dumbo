@@ -56,6 +56,10 @@ module Dumbo
         # target_folder = source_path.split("/")[0]
         # source_name = source_path.split("/")[1]
         # target_name = source_path.split("/")[1]
+        #
+        source['service'] = source_path.split("/")[0]
+        source['dataSource'] = source_path.split("/")[0]
+        source['dataTargetSource'] = target_path.split("/")[1]
 
         source_config = @sources[source_path]
         service = source_config["service"]

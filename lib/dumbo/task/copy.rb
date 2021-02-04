@@ -15,7 +15,7 @@ module Dumbo
             type: 'index_parallel',
             spec: {
                 dataSchema: {
-                    dataSource: @source['dataSource'],
+                    dataSource: @source['dataTargetSource'],
                     timestampSpec: {
                         column: ((@source['input']['timestamp'] || {})['column'] || "timestamp"),
                         format: ((@source['input']['timestamp'] || {})['format'] || "ruby"),
