@@ -49,36 +49,41 @@ module Dumbo
           return
         end
 
-        source_path = @sources.keys.first
-        target_path = @target
-
-        source_folder = source_path.split("/")[0]
-        target_folder = source_path.split("/")[0]
-        source_name = source_path.split("/")[1]
-        target_name = source_path.split("/")[1]
-        #
-
-        source_config = @sources[source_path]
-        service = source_config["service"]
-
-        $log.info("copying segments from: #{source_path} to #{target_path}")
-
-        target_segments_hash = Dumbo::Segment.all!(@db, @druid, target_path).map do |target_segment|
-          [target_segment.interval, target_segment]
-        end.to_h
-
-        segments_to_copy = []
-
-        Dumbo::Segment.all!(@db, @druid, source_path).each do |source_segment|
-          unless matching_druid_segments(source_segment, target_segments_hash[source_segment.interval], service)
-            segments_to_copy << source_segment
-          end
-        end
-
         jobs = []
 
-        segments_to_copy.each do |segment|
-          jobs << Task::Copy.new(source_config, segment.interval, source_name, target_name)
+        @sources.each do |source|
+          source_path = source.keys.first
+          target_path = @target
+
+          source_folder = source_path.split("/")[0]
+          target_folder = source_path.split("/")[0]
+          source_name = target_path.split("/")[1]
+          target_name = target_path.split("/")[1]
+          #
+
+          source_config = source[source_path]
+          service = source_config["service"]
+
+          $log.info("copying segments from: #{source_path} to #{target_path}")
+
+          target_segments_hash = Dumbo::Segment.all!(@db, @druid, target_path).map do |target_segment|
+            [target_segment.interval, target_segment]
+          end.to_h
+
+          segments_to_copy = []
+
+          Dumbo::Segment.all!(@db, @druid, source_path).each do |source_segment|
+            unless matching_druid_segments(source_segment, target_segments_hash[source_segment.interval], service)
+              segments_to_copy << source_segment
+            end
+          end
+
+          segments_to_copy.each do |segment|
+            jobs << Task::Copy.new(source_config, segment.interval, source_name, target_name)
+          end
+
+          require 'pry'
+          binding.pry
         end
 
         require 'pry'; binding.pry
