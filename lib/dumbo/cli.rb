@@ -63,13 +63,8 @@ module Dumbo
 
           $log.info("copying segments from: #{source_path} to #{target_path}")
 
-          first_segment = nil
-
-          Dumbo::Segment.all!(@db, @druid, source_path).each do |source_segment|
-
-          end
-
-          jobs << Task::Copy.new(source_config, segment.interval, source_name, target_name)
+          interval = source_config["interval"].map { |t| Time.parse(t) }
+          jobs << Task::Copy.new(source_config, interval, source_name, target_name)
         end
 
         require 'pry'; binding.pry
