@@ -51,39 +51,25 @@ module Dumbo
 
         jobs = []
 
-        @sources.each do |source|
+        @sources.each do |source_array|
+          source = source_array[1]
           source_path = source.keys.first
           target_path = @target
 
-          source_folder = source_path.split("/")[0]
-          target_folder = source_path.split("/")[0]
           source_name = target_path.split("/")[1]
           target_name = target_path.split("/")[1]
-          #
 
           source_config = source[source_path]
-          service = source_config["service"]
 
           $log.info("copying segments from: #{source_path} to #{target_path}")
 
-          target_segments_hash = Dumbo::Segment.all!(@db, @druid, target_path).map do |target_segment|
-            [target_segment.interval, target_segment]
-          end.to_h
-
-          segments_to_copy = []
+          first_segment = nil
 
           Dumbo::Segment.all!(@db, @druid, source_path).each do |source_segment|
-            unless matching_druid_segments(source_segment, target_segments_hash[source_segment.interval], service)
-              segments_to_copy << source_segment
-            end
+
           end
 
-          segments_to_copy.each do |segment|
-            jobs << Task::Copy.new(source_config, segment.interval, source_name, target_name)
-          end
-
-          require 'pry'
-          binding.pry
+          jobs << Task::Copy.new(source_config, segment.interval, source_name, target_name)
         end
 
         require 'pry'; binding.pry
@@ -126,21 +112,6 @@ module Dumbo
         $log.info("waiting for #{@tasks.length} tasks=#{@tasks.map(&:id)}")
         sleep 30
         @tasks.reject!(&:finished?)
-      end
-    end
-
-    def matching_druid_segments(source_segment, target_segment, service)
-      if !target_segment
-        return false
-      end
-
-      source_events = source_segment.events!(service, source_segment.interval)
-      target_events = target_segment.events!(service, target_segment.interval)
-
-      if source_events != target_events
-        return false
-      elsif source_segment.map(&:metrics).flatten == target_segment.map(&:metrics).flatten
-
       end
     end
 
