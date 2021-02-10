@@ -36,10 +36,10 @@ module Dumbo
     def events!(broker, interval = nil)
       interval ||= @interval
       query = Druid::Query::Builder.new
-                  .timeseries
-                  .long_sum('events')
-                  .granularity(:all)
-                  .interval(interval.first, interval.last)
+                .timeseries
+                .long_sum('events')
+                .granularity(:all)
+                .interval(interval.first, interval.last)
 
       ds = nil
       while ds.nil?
@@ -56,8 +56,8 @@ module Dumbo
     def metadata!(broker, interval = nil)
       interval ||= @interval
       query = Druid::Query::Builder.new
-                  .metadata
-                  .interval(interval.first, interval.last)
+                .metadata
+                .interval(interval.first, interval.last)
 
       ds = nil
       while ds.nil?
@@ -70,11 +70,11 @@ module Dumbo
         $log.warn("Druid failed with #{e}")
         # so far only in verify, this return value will cause a reimport
         {
-            'columns' => {
-                '__time': {
-                    'type' => false
-                }
+          'columns' => {
+            '__time': {
+              'type' => false
             }
+          }
         }
       end
     end
